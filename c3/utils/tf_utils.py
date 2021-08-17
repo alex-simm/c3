@@ -379,11 +379,11 @@ def super_to_choi(A):
     return A_choi
 
 
-def tf_project_to_comp(A, dims, index=None, to_super=False):
+def tf_project_to_comp(A, dims, index=None, to_super=False, outdims=None):
     """Project an operator onto the computational subspace."""
     if not index:
         index = list(range(len(dims)))
-    proj = projector(dims, index)
+    proj = projector(dims, index, outdims=outdims)
     if to_super:
         proj = np.kron(proj, proj)
     P = tf.constant(proj, dtype=A.dtype)

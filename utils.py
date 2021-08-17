@@ -217,7 +217,7 @@ def createCarrier(frequency: float) -> pulse.Carrier:
     )
 
 
-def createGaussianPulse(t_final: float) -> pulse.Envelope:
+def createGaussianPulse(t_final: float, sigma: float) -> pulse.Envelope:
     """
     Creates a Gaussian pulse that can be used as envelope for the carrier frequency on a single drive line.
     """
@@ -226,7 +226,11 @@ def createGaussianPulse(t_final: float) -> pulse.Envelope:
         "amp": Quantity(value=0.5, min_val=0.2, max_val=0.6, unit="V"),
         "t_final": scaled_quantity(t_final, 0.5, "s"),
         "sigma": Quantity(
-            value=t_final / 4, min_val=t_final / 8, max_val=t_final / 2, unit="s"
+            value=sigma,
+            min_val=0.5 * sigma,
+            max_val=2 * sigma,
+            unit="s"
+            # value=t_final / 4, min_val=t_final / 8, max_val=t_final / 2, unit="s"
         ),
         "xy_angle": Quantity(
             value=0.0, min_val=-0.5 * np.pi, max_val=2.5 * np.pi, unit="rad"

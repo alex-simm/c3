@@ -47,7 +47,13 @@ def fid_reg_deco(func):
 
 @fid_reg_deco
 def state_transfer_infid_set(
-    propagators: dict, instructions: dict, index, dims, psi_0, proj=True
+    propagators: dict,
+    instructions: dict,
+    index,
+    dims,
+    psi_0,
+    proj=True,
+    active_levels=2,
 ):
     """
     Mean state transfer infidelity.
@@ -72,14 +78,20 @@ def state_transfer_infid_set(
     """
     infids = []
     for gate, propagator in propagators.items():
-        perfect_gate = instructions[gate].get_ideal_gate(dims)
-        infid = state_transfer_infid(perfect_gate, propagator, index, dims, psi_0)
+        perfect_gate = instructions[gate].get_ideal_gate(
+            dims, active_levels=active_levels
+        )
+        infid = state_transfer_infid(
+            perfect_gate, propagator, index, dims, psi_0, active_levels
+        )
         infids.append(infid)
     return tf.reduce_mean(infids)
 
 
 @fid_reg_deco
-def state_transfer_infid(ideal: np.array, actual: tf.constant, index, dims, psi_0):
+def state_transfer_infid(
+    ideal: np.array, actual: tf.constant, index, dims, psi_0, active_levels=2
+):
     """
     Single gate state transfer infidelity. The dimensions of psi_0 and ideal need to be
     compatible and index and dims need to project actual to these same dimensions.
@@ -103,7 +115,9 @@ def state_transfer_infid(ideal: np.array, actual: tf.constant, index, dims, psi_
         State infidelity for the selected gate
 
     """
-    actual_comp = tf_project_to_comp(actual, dims=dims, index=index)
+    actual_comp = tf_project_to_comp(
+        actual, dims=dims, index=index, outdims=[active_levels] * len(dims)
+    )
     psi_ideal = tf.matmul(ideal, psi_0)
     psi_actual = tf.matmul(actual_comp, psi_0)
     overlap = tf_ketket_fid(psi_ideal, psi_actual)
