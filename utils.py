@@ -1,22 +1,28 @@
-from typing import List, Dict
+from typing import List, Dict, Callable, cast
+
 import numpy as np
+import tensorflow as tf
+
+import c3.generator.devices as devices
 import c3.libraries.chip as chip
 import c3.libraries.envelopes as envelopes
 import c3.libraries.hamiltonians as hamiltonians
 import c3.libraries.tasks as tasks
-import c3.generator.devices as devices
 import c3.signal.pulse as pulse
 from c3.c3objs import Quantity
+from c3.experiment import Experiment
 from c3.generator.generator import Generator
 from c3.model import Model
 from c3.signal.gates import Instruction
 
 """
 TODO:
-is sideband necessary? (createCarrier, createGaussianEnvelope, createSingleQubitGate)
+- is sideband necessary? (createCarrier, createGaussianEnvelope, createSingleQubitGate)
+- generalise createState to more than one qubit
 """
 
 
+# ========================== general utilities ==========================
 def scaled_quantity(value: float, delta: float, unit: str) -> Quantity:
     """
     Creates a quantity between (1+delta)*value and (1-delta)*value.
@@ -38,6 +44,18 @@ def filterValues(data: Dict, valueType) -> List:
     return list(filter(lambda q: type(q) == valueType, data.values()))
 
 
+def getDrive(model: Model, qubit: chip.Qubit) -> chip.Drive:
+    """
+    Returns the drive line that is connected to the qubit, or None if no drive is connected to it.
+    """
+    drives = [
+        cast(chip.Drive, d) for d in model.couplings.values() if type(d) == chip.Drive
+    ]
+    connected = list(filter(lambda d: qubit.name in d.connected, drives))
+    return connected[0] if len(connected) > 0 else None
+
+
+# ====================== creating models and experiments ======================
 def createQubit(
     index: int, levels: int, frequency: float, anharmonicity: float
 ) -> chip.Qubit:
@@ -293,3 +311,71 @@ def createSingleQubitGate(
             )
 
     return gate
+
+
+def createState(model: Model, occupied_basis_states: List[int]) -> tf.Tensor:
+    """
+    Returns a state as a tensor in which specific basis states are occupied.
+    """
+    psi_init = np.array([[0] * model.tot_dim], dtype=float)
+    psi_init[0][occupied_basis_states] = 1
+    psi_init /= np.linalg.norm(psi_init)
+    return tf.transpose(tf.constant(psi_init, tf.complex128))
+
+
+# ========================== running experiments ==========================
+def runTimeEvolution(
+    experiment: Experiment,
+    psi_init: tf.Tensor,
+    gate_sequence: List[str],
+    population_function: Callable,
+) -> np.array:
+    """
+    Runs the time evolution of the experiment and returns the populations.
+
+    Parameters
+    ----------
+    experiment:
+        The experiment containing the model and propagators
+    psi_init:
+        Initial state
+    gate_sequence:
+        List of gate names that will be applied to the state
+    population_function:
+        A function that is called in each time step to calculate the population from the state
+
+    Returns
+    -------
+    np.array
+        The population vector for each time step.
+    """
+    dUs = experiment.partial_propagators
+    psi_t = psi_init.numpy()
+
+    # run the time evolution for each gate
+    pop_t = population_function(psi_t)
+    for gate in gate_sequence:
+        for du in dUs[gate]:
+            psi_t = np.matmul(du.numpy(), psi_t)
+            pops = population_function(psi_t)
+            pop_t = np.append(pop_t, pops, axis=1)
+    return pop_t
+
+
+def runTimeEvolutionDefault(
+    experiment: Experiment, psi_init: tf.Tensor, gate_sequence: List[str]
+) -> np.array:
+    """
+    Runs the time evolution of the experiment and returns the populations. Same as `runTimeEvolution`. Uses
+    the absolute square of the wave function entries as population.
+
+    See Also
+        runTimeEvolution
+    """
+    model = experiment.pmap.model
+    return runTimeEvolution(
+        experiment,
+        psi_init,
+        gate_sequence,
+        lambda psi_t: experiment.populations(psi_t, model.lindbladian),
+    )
