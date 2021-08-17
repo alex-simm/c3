@@ -1,4 +1,6 @@
-from typing import List, Dict, Callable, cast
+import os
+import tempfile
+from typing import List, Dict, Callable, cast, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -12,7 +14,9 @@ import c3.signal.pulse as pulse
 from c3.c3objs import Quantity
 from c3.experiment import Experiment
 from c3.generator.generator import Generator
+from c3.libraries import algorithms
 from c3.model import Model
+from c3.optimizers.optimalcontrol import OptimalControl
 from c3.signal.gates import Instruction
 
 """
@@ -323,7 +327,7 @@ def createState(model: Model, occupied_basis_states: List[int]) -> tf.Tensor:
     return tf.transpose(tf.constant(psi_init, tf.complex128))
 
 
-# ========================== running experiments ==========================
+# ========================== running and optimising experiments ==========================
 def runTimeEvolution(
     experiment: Experiment,
     psi_init: tf.Tensor,
@@ -379,3 +383,68 @@ def runTimeEvolutionDefault(
         gate_sequence,
         lambda psi_t: experiment.populations(psi_t, model.lindbladian),
     )
+
+
+def optimise(
+    experiment: Experiment,
+    gates: List[Instruction],
+    optimisable_parameters: List,
+    fidelity_fctn: Callable,
+    fidelity_params: Dict,
+    callback: Callable = None,
+    log_dir: str = None,
+) -> Tuple:
+    """
+    Optimises gates in an experiment with respect to a given fidelity function.
+
+    Parameters
+    ----------
+    experiment:
+        The experiment containing the model
+    gates:
+        A list of gates that should be optimised
+    optimisable_parameters:
+        A list of parameters that can be optimised
+    fidelity_fctn:
+        The infidelity function that is used for optimisation
+    fidelity_params:
+        Additional parameters for the fidelity function
+    callback:
+        A callback that is called after each optimisation step
+    log_dir:
+        Directory to which the log files will be written. Defaults to the system's temp directory.
+
+    Returns
+    -------
+    The parameters before and after optimisation and the final infidelity
+    """
+    # find drive lines corresponding to the qubits
+    model = experiment.pmap.model
+    qubits = filterValues(model.subsystems, chip.Qubit)
+    qubit_names = [q.name for q in qubits]
+    experiment.set_opt_gates([g.get_key() for g in gates])
+    experiment.pmap.set_opt_map(optimisable_parameters)
+
+    # create optimiser
+    if log_dir is None:
+        log_dir = os.path.join(tempfile.TemporaryDirectory().name, "c3logs")
+    opt = OptimalControl(
+        dir_path=log_dir,
+        fid_func=fidelity_fctn,
+        fid_func_kwargs=fidelity_params,
+        fid_subspace=qubit_names,
+        pmap=experiment.pmap,
+        algorithm=algorithms.lbfgs,
+        options={"maxfun": 150},
+    )
+    opt.set_exp(experiment)
+    if callback:
+        opt.set_callback(callback)
+
+    # start optimisation
+    params_before = experiment.pmap.str_parameters()
+    opt.optimize_controls()
+    result = opt.current_best_goal
+    params_after = experiment.pmap.str_parameters()
+
+    return params_before, params_after, result
