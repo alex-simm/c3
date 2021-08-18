@@ -263,7 +263,7 @@ def createNoDrivePulse(t_final: float) -> pulse.Envelope:
 def createSingleQubitGate(
     name: str,
     t_final: float,
-    frequency: float,
+    carrier_frequency: float,
     envelope: pulse.Envelope,
     model: Model,
     qubit: chip.Qubit,
@@ -278,7 +278,7 @@ def createSingleQubitGate(
         Name of this gate
     t_final:
         Time after which the pulse of this gate should be over
-    frequency:
+    carrier_frequency:
         Carrier frequency
     envelope:
         Shape of the envelope
@@ -307,7 +307,7 @@ def createSingleQubitGate(
 
     # add carrier and envelope for each drive line
     for drive in drive_names:
-        carrier = createCarrier(frequency)
+        carrier = createCarrier(carrier_frequency)
         if drive == active_drive.name:
             gate.add_component(envelope, drive)
             gate.add_component(carrier, drive)
