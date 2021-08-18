@@ -249,6 +249,59 @@ def createGaussianPulse(t_final: float, sigma: float) -> pulse.Envelope:
     )
 
 
+def createPWCPulse(
+    t_final: float, num_pieces: int, shape_fctn: Callable
+) -> pulse.Envelope:
+    """
+    Creates a piece-wise constant envelope using the given shape function.
+    """
+    t = np.linspace(0, t_final, num_pieces)
+    values = shape_fctn(t)
+
+    sideband = 50e6
+    params = {
+        "amp": Quantity(value=0.5, min_val=0.2, max_val=0.6, unit="V"),
+        "t_final": scaled_quantity(t_final, 0.5, "s"),
+        "xy_angle": Quantity(
+            value=0.0, min_val=-0.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
+        ),
+        "freq_offset": Quantity(
+            value=-sideband - 3e6, min_val=-56 * 1e6, max_val=-52 * 1e6, unit="Hz 2pi"
+        ),
+        "delta": Quantity(value=-1, min_val=-5, max_val=3, unit=""),
+        "t_bin_start": Quantity(0),
+        "t_bin_end": Quantity(t_final),
+        "inphase": Quantity(values),
+    }
+
+    return pulse.Envelope(
+        name="gauss",
+        desc="Gaussian envelope",
+        params=params,
+        shape=envelopes.pwc_shape,
+    )
+
+
+def createPWCGaussianPulse(
+    t_final: float, sigma: float, num_pieces: int
+) -> pulse.Envelope:
+    """
+    Creates a piece-wise constant envelope with a Gaussian form.
+    """
+    return createPWCPulse(
+        t_final,
+        num_pieces,
+        lambda t: np.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2)),
+    )
+
+
+def createPWCConstantPulse(t_final: float, num_pieces: int) -> pulse.Envelope:
+    """
+    Creates a piece-wise constant envelope initialised to constant values of 0.5.
+    """
+    return createPWCPulse(t_final, num_pieces, lambda t: 0.5 * np.ones(len(t)))
+
+
 def createNoDrivePulse(t_final: float) -> pulse.Envelope:
     """
     Creates an empty envelope, i.e. a pulse that does nothing.
