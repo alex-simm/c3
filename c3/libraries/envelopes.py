@@ -488,6 +488,17 @@ def gaussian_nonorm(t, params):
 
 
 @env_reg_deco
+def gaussian_nonorm_double(t, params):
+    t_final = tf.cast(params["t_final"].get_value(), tf.float64)
+    sigma = params["sigma"].get_value()
+    sigma2 = params["sigma2"].get_value()
+    relative_amp = params["relative_amp"].get_value()
+    gauss = tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2))
+    gauss2 = tf.exp(-((t - t_final / 2) ** 2) / (sigma2 ** 2))
+    return gauss - relative_amp * gauss2
+
+
+@env_reg_deco
 def gaussian_der_nonorm(t, params):
     """Derivative of the normalized gaussian (ifself not normalized)."""
     t_final = tf.cast(params["t_final"].get_value(), tf.float64)
