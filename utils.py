@@ -311,7 +311,7 @@ def createPWCPulse(
 
 
 def createPWCGaussianPulse(
-    t_final: float, sigma: float, frequency: float, num_pieces: int
+    t_final: float, sigma: float, num_pieces: int
 ) -> pulse.Envelope:
     """
     Creates a piece-wise constant envelope with a Gaussian form.
@@ -319,8 +319,7 @@ def createPWCGaussianPulse(
     return createPWCPulse(
         t_final,
         num_pieces,
-        lambda t: np.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2))
-        * np.cos(frequency * t),
+        lambda t: np.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2)),
     )
 
 
@@ -469,6 +468,26 @@ def runTimeEvolutionDefault(
         gate_sequence,
         lambda psi_t: experiment.populations(psi_t, model.lindbladian),
     )
+
+
+def createOptimisableParameterMap(
+    experiment: Experiment, gates: List[Instruction], param_map: dict
+):
+    # find all drive lines in the model
+    model = experiment.pmap.model
+    drives = filterValues(model.couplings, chip.Drive)
+
+    gateset_opt_map = []
+    for gate in gates:
+        for target in gate.targets:
+            # TODO: target as index might not always work
+            drive = drives[target]
+            for component_name, params in param_map.items():
+                for param in params:
+                    gateset_opt_map.append(
+                        [(gate.get_key(), drive.name, component_name, param)]
+                    )
+    return gateset_opt_map
 
 
 def optimise(
