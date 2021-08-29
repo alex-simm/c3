@@ -14,7 +14,6 @@ import c3.signal.pulse as pulse
 from c3.c3objs import Quantity
 from c3.experiment import Experiment
 from c3.generator.generator import Generator
-from c3.libraries import algorithms
 from c3.model import Model
 from c3.optimizers.optimalcontrol import OptimalControl
 from c3.signal.gates import Instruction
@@ -478,6 +477,8 @@ def optimise(
     optimisable_parameters: List,
     fidelity_fctn: Callable,
     fidelity_params: Dict,
+    algorithm: Callable,
+    algo_options: Dict = None,
     callback: Callable = None,
     log_dir: str = None,
 ) -> Tuple:
@@ -521,8 +522,8 @@ def optimise(
         fid_func_kwargs=fidelity_params,
         fid_subspace=qubit_names,
         pmap=experiment.pmap,
-        algorithm=algorithms.lbfgs,
-        options={"maxfun": 150},
+        algorithm=algorithm,
+        options=algo_options,
     )
     opt.set_exp(experiment)
     if callback:
