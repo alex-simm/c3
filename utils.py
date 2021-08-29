@@ -249,13 +249,13 @@ def createGaussianPulse(t_final: float, sigma: float) -> pulse.Envelope:
 
 
 def createDoubleGaussianPulse(
-    t_final: float, sigma: float, sigma2: float, amp2: float
+    t_final: float, sigma: float, sigma2: float, relative_amp: float
 ) -> pulse.Envelope:
     """
     Creates a Gaussian pulse that can be used as envelope for the carrier frequency on a single drive line.
     """
     gauss_params = {
-        "amp": Quantity(value=0.5, min_val=0.2, max_val=0.6, unit="V"),
+        "amp": Quantity(value=3, min_val=0.2, max_val=3, unit="V"),
         "t_final": scaled_quantity(t_final, 0.5, "s"),
         "sigma": Quantity(
             value=sigma, min_val=0.5 * sigma, max_val=2 * sigma, unit="s"
@@ -263,7 +263,7 @@ def createDoubleGaussianPulse(
         "sigma2": Quantity(
             value=sigma2, min_val=0.5 * sigma2, max_val=2 * sigma2, unit="s"
         ),
-        "relative_amp": Quantity(value=amp2, min_val=0.1, max_val=5, unit=""),
+        "relative_amp": Quantity(value=relative_amp, min_val=0.1, max_val=5, unit=""),
         "xy_angle": Quantity(0, unit="rad"),
         "freq_offset": Quantity(0, unit="Hz 2pi"),
         "delta": Quantity(value=-1, min_val=-5, max_val=3, unit=""),
