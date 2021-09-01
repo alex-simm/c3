@@ -283,7 +283,7 @@ def createPWCPulse(
     """
     Creates a piece-wise constant envelope using the given shape function.
     """
-    t = tf.linspace(0, t_final, num_pieces)
+    t = tf.linspace(0.0, t_final, num_pieces)
     values = shape_fctn(t)
 
     sideband = 50e6
@@ -319,7 +319,25 @@ def createPWCGaussianPulse(
     return createPWCPulse(
         t_final,
         num_pieces,
-        lambda t: tf.math.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2)),
+        lambda t: tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2)),
+    )
+
+
+def createPWCDoubleGaussianPulse(
+    t_final: float, sigma: float, num_pieces: int
+) -> pulse.Envelope:
+    """
+    Creates a piece-wise constant envelope with a Gaussian form.
+    """
+
+    return createPWCPulse(
+        t_final,
+        num_pieces,
+        lambda t: 5
+        * (
+            tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2))
+            - tf.exp(-((t - t_final / 2) ** 2) / (sigma ** 2)) * tf.sqrt(2.0)
+        ),
     )
 
 
