@@ -266,7 +266,7 @@ def createDoubleGaussianPulse(
         "relative_amp": Quantity(value=relative_amp, min_val=0.1, max_val=5, unit=""),
         "xy_angle": Quantity(0, unit="rad"),
         "freq_offset": Quantity(0, unit="Hz 2pi"),
-        "delta": Quantity(value=-1, min_val=-5, max_val=3, unit=""),
+        "delta": Quantity(value=0, min_val=-5, max_val=3, unit=""),
     }
 
     return pulse.Envelope(
@@ -286,16 +286,14 @@ def createPWCPulse(
     t = tf.linspace(0.0, t_final, num_pieces)
     values = shape_fctn(t)
 
-    sideband = 50e6
     params = {
         "amp": Quantity(value=0.5, min_val=0.2, max_val=0.6, unit="V"),
         "t_final": scaled_quantity(t_final, 0.5, "s"),
         "xy_angle": Quantity(
             value=0.0, min_val=-0.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
         ),
-        "freq_offset": Quantity(
-            value=-sideband - 3e6, min_val=-56 * 1e6, max_val=-52 * 1e6, unit="Hz 2pi"
-        ),
+        # "freq_offset": Quantity(value=-50e6 - 3e6, min_val=-56e6, max_val=-52e6, unit="Hz 2pi"),
+        "freq_offset": Quantity(value=0, unit="Hz 2pi"),
         "delta": Quantity(value=-1, min_val=-5, max_val=3, unit=""),
         "t_bin_start": Quantity(0),
         "t_bin_end": Quantity(t_final),
@@ -333,11 +331,8 @@ def createPWCDoubleGaussianPulse(
     return createPWCPulse(
         t_final,
         num_pieces,
-        lambda t: 5
-        * (
-            tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2))
-            - tf.exp(-((t - t_final / 2) ** 2) / (sigma ** 2)) * tf.sqrt(2.0)
-        ),
+        lambda t: tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2))
+        - tf.exp(-((t - t_final / 2) ** 2) / (sigma ** 2)) * tf.sqrt(2.0),
     )
 
 
