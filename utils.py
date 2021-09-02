@@ -17,6 +17,7 @@ from c3.generator.generator import Generator
 from c3.model import Model
 from c3.optimizers.optimalcontrol import OptimalControl
 from c3.signal.gates import Instruction
+from scipy.signal import find_peaks
 
 """
 TODO:
@@ -568,3 +569,47 @@ def optimise(
     params_after = experiment.pmap.str_parameters()
 
     return params_before, params_after, result
+
+
+# ========================== plotting ==========================
+
+
+def findPeaks(x: np.array, y: np.array, N: int) -> Tuple[np.array, np.array]:
+    """
+    Returns the x and y values of the N largest local maxima in y.
+    """
+    peaks = find_peaks(y)[0]
+    peakX = x[peaks]
+    peakY = y[peaks]
+    maxIndices = peakY.argsort()[-N:][::-1]
+    return peakX[maxIndices], peakY[maxIndices]
+
+
+def findFrequencyPeaks(
+    time: np.array, signal: np.array, N: int, normalise: bool = False
+) -> Tuple[np.array, np.array]:
+    """
+    Calculates the Fourier transformation of the signal and returns the N highest peaks from the frequency spectrum.
+
+    Parameters
+    ----------
+    time: array of time stamps
+    signal: array of signal values at the time stamps
+    N: number of peaks to return
+    normalise: whether the spectrum should be normalised
+
+    Returns
+    -------
+    a tuple of frequencies and peak values for all N peaks
+    """
+    x = time.flatten()
+    y = signal.flatten()
+
+    freq_signal = np.fft.rfft(y)
+    if normalise and np.abs(np.max(freq_signal)) > 1e-14:
+        normalised = freq_signal / np.max(freq_signal)
+    else:
+        normalised = freq_signal
+    freq = np.fft.rfftfreq(len(x), x[-1] / len(x))
+
+    return findPeaks(freq, np.abs(normalised) ** 2, N)
