@@ -18,6 +18,7 @@ from c3.model import Model
 from c3.optimizers.optimalcontrol import OptimalControl
 from c3.signal.gates import Instruction
 from scipy.signal import find_peaks
+import matplotlib.pyplot as plt
 
 """
 TODO:
@@ -613,3 +614,128 @@ def findFrequencyPeaks(
     freq = np.fft.rfftfreq(len(x), x[-1] / len(x))
 
     return findPeaks(freq, np.abs(normalised) ** 2, N)
+
+
+def plotSignal(time, signal, filename=None, spectrum_cut=1e-4) -> None:
+    """
+    Plots a time dependent signal and its normalised frequency spectrum.
+
+    Parameters
+    ----------
+    time
+        timestamps
+    signal
+        signal value
+    filename: str
+        Optional name of the file to which the plot will be saved. If none,
+        it will only be shown.
+    spectrum_cut:
+        If not None, only the part of the normalised spectrum will be plotted
+        whose absolute square is larger than this value.
+
+    Returns
+    -------
+
+    """
+    # plot time domain
+    time = time.flatten()
+    signal = signal.flatten()
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    axs[0].set_title("Signal")
+    axs[0].plot(time, signal)
+    axs[0].set_xlabel("time")
+
+    # calculate frequency spectrum
+    freq_signal = np.fft.rfft(signal)
+    if np.abs(np.max(freq_signal)) > 1e-14:
+        normalised = freq_signal / np.max(freq_signal)
+    else:
+        normalised = freq_signal
+    freq = np.fft.rfftfreq(len(time), time[-1] / len(time))
+
+    # cut spectrum if necessary
+    if spectrum_cut is not None:
+        limits = np.flatnonzero(np.abs(normalised) ** 2 > spectrum_cut)
+        freq = freq[limits[0] : limits[-1]]
+        normalised = normalised[limits[0] : limits[-1]]
+
+    # plot frequency domain
+    axs[1].set_title("Spectrum")
+    axs[1].plot(freq, normalised.real, label="Re")
+    axs[1].plot(freq, normalised.imag, label="Im")
+    axs[1].plot(freq, np.abs(normalised) ** 2, label="Square")
+    axs[1].set_xlabel("frequency")
+    axs[1].legend()
+
+    # show and save
+    plt.tight_layout()
+    if filename:
+        print("saving plot in " + filename)
+        plt.savefig(filename)
+    else:
+        plt.show()
+    plt.close()
+
+
+def plotOccupations(
+    experiment: Experiment,
+    populations: np.array,
+    gate_sequence: List[str],
+    level_names: List[str] = None,
+    filename: str = None,
+) -> None:
+    """
+    Plots time dependent populations. They need to be calculated with `runTimeEvolution` first.
+
+    Parameters
+    ----------
+    experiment: Experiment
+        The experiment containing the model and propagators
+    populations: np.array
+        Population vector for each time step
+    gate_sequence: List[str]
+        List of gate names that will be applied to the state
+    level_names: List[str]
+        Optional list of names for the levels. If none, the default list
+        from the experiment will be used.
+    filename: str
+        Optional name of the file to which the plot will be saved. If none,
+        it will only be shown.
+
+    Returns
+    -------
+
+    """
+    # plot populations
+    fig, axs = plt.subplots(1, 1)
+    dt = experiment.ts[1] - experiment.ts[0]
+    ts = np.linspace(0.0, dt * populations.shape[1], populations.shape[1])
+    axs.plot(ts / 1e-9, populations.T)
+
+    # plot vertical lines
+    gate_steps = [experiment.partial_propagators[g].shape[0] for g in gate_sequence]
+    for i in range(1, len(gate_steps)):
+        gate_steps[i] += gate_steps[i - 1]
+    gate_times = gate_steps * dt
+    plt.vlines(
+        gate_times / 1e-9,
+        tf.reduce_min(populations),
+        tf.reduce_max(populations),
+        linestyles=":",
+        colors="black",
+    )
+
+    # set plot properties
+    axs.tick_params(direction="in", left=True, right=True, top=False, bottom=True)
+    axs.set_xlabel("Time [ns]")
+    axs.set_ylabel("Population")
+    plt.legend(level_names if level_names else experiment.pmap.model.state_labels)
+    plt.tight_layout()
+
+    # show and save
+    if filename:
+        print("saving plot in " + filename)
+        plt.savefig(filename)
+    else:
+        plt.show()
+    plt.close()
