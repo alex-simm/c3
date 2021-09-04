@@ -141,7 +141,7 @@ class SingleQubitExperiment:
             # callback=callback,
             algorithm=algorithm,
             algo_options=algorithm_options,
-            log_dir=self.__directory + "/" + self.__createFileName("log") + "/",
+            log_dir="./" + self.__createFileName("log") + "/",
         )
         print("before:\n", params_before)
         print("after:\n", params_after)
