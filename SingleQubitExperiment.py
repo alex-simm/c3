@@ -154,7 +154,7 @@ class SingleQubitExperiment:
             s += self.__file_prefix + "_"
         s += name
         if self.__file_suffix is not None and len(self.__file_suffix) > 0:
-            s += self.__file_suffix + "_"
+            s = "_" + self.__file_suffix
         if extension is not None and len(extension) > 0:
             s += "." + extension
         return s
