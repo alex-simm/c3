@@ -151,10 +151,10 @@ class SingleQubitExperiment:
     def __createFileName(self, name, extension=None):
         s = self.__directory + "/"
         if self.__file_prefix is not None and len(self.__file_prefix) > 0:
-            s += self.__file_prefix + "_"
+            s = self.__file_prefix + "_" + s
         s += name
         if self.__file_suffix is not None and len(self.__file_suffix) > 0:
-            s = "_" + self.__file_suffix
+            s += "_" + self.__file_suffix
         if extension is not None and len(extension) > 0:
             s += "." + extension
         return s
