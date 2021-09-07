@@ -157,7 +157,7 @@ def createModel(
     return model
 
 
-def createGenerator(model: Model) -> Generator:
+def createGenerator(model: Model, useDrag=True) -> Generator:
     """
     Creates a generator with a simple device chain for each drive line in the model.
     """
@@ -171,7 +171,9 @@ def createGenerator(model: Model) -> Generator:
 
     # enable drag pulse for the AWG
     awg = devices.AWG(name="awg", resolution=awg_res, outputs=1)
-    awg.enable_drag_2()
+    if useDrag:
+        print("enabling DRAG2")
+        awg.enable_drag_2()
 
     return Generator(
         devices={

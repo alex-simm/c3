@@ -42,6 +42,7 @@ class SingleQubitExperiment:
         anharm: float,
         carrier_freq: float,
         envelope: pulse.Envelope,
+        useDrag=True,
     ):
         self.__t_final = t_final
         occupied_levels = [0, 2]
@@ -49,7 +50,7 @@ class SingleQubitExperiment:
         # model
         self.__qubit = utils.createQubit(1, 5, freq, -anharm)
         model = utils.createModel([self.__qubit])
-        generator = utils.createGenerator(model)
+        generator = utils.createGenerator(model, useDrag)
 
         # gate
         ideal = qt_utils.np_kron_n([constants.Id, constants.x90p])
