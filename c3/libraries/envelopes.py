@@ -494,7 +494,7 @@ def gaussian_nonorm_double(t, params):
     sigma2 = params["sigma2"].get_value()
     relative_amp = params["relative_amp"].get_value()
     gauss = tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2))
-    gauss2 = tf.exp(-((t - t_final / 2) ** 2) / (sigma2 ** 2))
+    gauss2 = tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma2 ** 2))
     return gauss - relative_amp * gauss2
 
 

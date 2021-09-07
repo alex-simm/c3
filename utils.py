@@ -224,7 +224,6 @@ def createGaussianPulse(t_final: float, sigma: float) -> pulse.Envelope:
     """
     Creates a Gaussian pulse that can be used as envelope for the carrier frequency on a single drive line.
     """
-    sideband = 50e6
     gauss_params_single = {
         "amp": Quantity(value=0.5, min_val=0.2, max_val=0.6, unit="V"),
         "t_final": scaled_quantity(t_final, 0.5, "s"),
@@ -236,12 +235,12 @@ def createGaussianPulse(t_final: float, sigma: float) -> pulse.Envelope:
             # value=t_final / 4, min_val=t_final / 8, max_val=t_final / 2, unit="s"
         ),
         "xy_angle": Quantity(
-            value=0.0, min_val=-0.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
+            value=0.0, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
         ),
         "freq_offset": Quantity(
-            value=-sideband - 3e6, min_val=-56 * 1e6, max_val=-52 * 1e6, unit="Hz 2pi"
+            value=-53e6, min_val=-56e6, max_val=-52e6, unit="Hz 2pi"
         ),
-        "delta": Quantity(value=-1, min_val=-5, max_val=3, unit=""),
+        "delta": Quantity(value=-1, min_val=-5, max_val=5, unit=""),
     }
 
     return pulse.Envelope(
@@ -294,11 +293,12 @@ def createPWCPulse(
         "amp": Quantity(value=0.5, min_val=0.2, max_val=0.6, unit="V"),
         "t_final": scaled_quantity(t_final, 0.5, "s"),
         "xy_angle": Quantity(
-            value=0.0, min_val=-0.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
+            value=0.0, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
         ),
-        # "freq_offset": Quantity(value=-50e6 - 3e6, min_val=-56e6, max_val=-52e6, unit="Hz 2pi"),
-        "freq_offset": Quantity(value=0, unit="Hz 2pi"),
-        "delta": Quantity(value=-1, min_val=-5, max_val=3, unit=""),
+        "freq_offset": Quantity(
+            value=-53e6, min_val=-56e6, max_val=-52e6, unit="Hz 2pi"
+        ),
+        "delta": Quantity(value=-1, min_val=-5, max_val=5, unit=""),
         "t_bin_start": Quantity(0),
         "t_bin_end": Quantity(t_final),
         "inphase": Quantity(values),
@@ -326,7 +326,7 @@ def createPWCGaussianPulse(
 
 
 def createPWCDoubleGaussianPulse(
-    t_final: float, sigma: float, num_pieces: int
+    t_final: float, sigma: float, sigma2: float, relative_amp: float, num_pieces: int
 ) -> pulse.Envelope:
     """
     Creates a piece-wise constant envelope with a Gaussian form.
@@ -336,7 +336,7 @@ def createPWCDoubleGaussianPulse(
         t_final,
         num_pieces,
         lambda t: tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2))
-        - tf.exp(-((t - t_final / 2) ** 2) / (sigma ** 2)) * tf.sqrt(2.0),
+        - tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma2 ** 2)) * relative_amp,
     )
 
 
