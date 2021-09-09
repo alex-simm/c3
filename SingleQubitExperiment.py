@@ -77,6 +77,12 @@ class SingleQubitExperiment:
     def getEnergies(self):
         return self.__qubit.get_Hamiltonian().numpy().diagonal().real
 
+    def getQubit(self) -> chip.Qubit:
+        return self.__qubit
+
+    def getExperiment(self) -> Experiment:
+        return self.__experiment
+
     def generateSignal(self) -> Dict[str, tf.Tensor]:
         """
         Makes the generator generate a signal and returns it.
@@ -125,6 +131,7 @@ class SingleQubitExperiment:
         algorithm_options: dict,
         fidelity_function: Callable,
         fidelity_params: dict,
+        callback: Callable = None,
     ):
         # optimise
         optimisable_gates = list(filter(lambda g: g.get_key() != "id[]", [self.__gate]))
@@ -137,9 +144,8 @@ class SingleQubitExperiment:
             optimisable_gates,
             optimisable_parameters=gateset_opt_map,
             fidelity_fctn=fidelity_function,
-            # fidelity_fctn=test_fidelity,
             fidelity_params=fidelity_params,
-            # callback=callback,
+            callback=callback,
             algorithm=algorithm,
             algo_options=algorithm_options,
             log_dir="./" + self.__createFileName("log") + "/",
