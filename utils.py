@@ -18,7 +18,10 @@ from c3.model import Model
 from c3.optimizers.optimalcontrol import OptimalControl
 from c3.signal.gates import Instruction
 from scipy.signal import find_peaks
+
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as mplcolors
 
 """
 TODO:
@@ -735,6 +738,78 @@ def plotOccupations(
     plt.tight_layout()
 
     # show and save
+    if filename:
+        print("saving plot in " + filename)
+        plt.savefig(filename)
+    else:
+        plt.show()
+    plt.close()
+
+
+def plotMatrix(M: np.array, filename: str = None):
+    z1 = np.absolute(M)
+    z2 = np.angle(M)
+
+    # mesh
+    lx = len(z1[0])
+    ly = len(z1[:, 0])
+    xpos = np.arange(0, lx, 1)
+    ypos = np.arange(0, ly, 1)
+    xpos, ypos = np.meshgrid(xpos + 0.25, ypos + 0.25)
+    xpos = xpos.flatten()
+    ypos = ypos.flatten()
+    zpos = np.zeros(lx * ly)
+
+    # bar sizes
+    dx = 0.5 * np.ones_like(zpos)
+    dy = dx.copy()
+    dz1 = z1.flatten()
+    dz2 = z2.flatten()
+
+    # colours
+    cmap = cm.get_cmap("viridis")
+    rgba = [cmap((k + np.pi) / (2 * np.pi)) for k in dz2]
+
+    # plotting
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    for idx, cur_zpos in enumerate(zpos):
+        ax.bar3d(
+            xpos[idx],
+            ypos[idx],
+            cur_zpos,
+            dx[idx],
+            dy[idx],
+            dz1[idx],
+            alpha=0.6,
+            color=rgba[idx],
+        )
+
+    # labels and ticks
+    column_names = [bin(i)[2:].zfill(int(np.log2(lx))) for i in range(lx)]
+    row_names = [bin(i)[2:].zfill(int(np.log2(ly))) for i in range(ly)]
+    ax.set_xticks(np.arange(0.5, lx + 0.5, 1))
+    ax.set_yticks(np.arange(0.5, ly + 0.5, 1))
+    ax.w_xaxis.set_ticklabels(row_names, fontsize=12, rotation=45, ha="right", va="top")
+    ax.w_yaxis.set_ticklabels(
+        column_names, fontsize=12, rotation=-22.5, ha="left", va="center"
+    )
+    ax.set_xlabel("in")
+    ax.set_ylabel("out")
+
+    # colour bar
+    norm = mplcolors.Normalize(vmin=-np.pi, vmax=np.pi)
+    cbar = fig.colorbar(
+        cm.ScalarMappable(norm=norm, cmap=cmap),
+        ax=ax,
+        shrink=0.6,
+        pad=0.1,
+        ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
+    )
+    cbar.ax.set_yticklabels(["$-\\pi$", "$\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
+
+    # show and save
+    plt.tight_layout()
     if filename:
         print("saving plot in " + filename)
         plt.savefig(filename)
