@@ -124,6 +124,10 @@ class SingleQubitExperiment:
             ],
         )
 
+    def plotPropagator(self, name: str) -> None:
+        U = self.__experiment.propagators[self.__gate.get_key()]
+        utils.plotMatrix(U, name)
+
     def optimise(
         self,
         optimisable_params: dict,
