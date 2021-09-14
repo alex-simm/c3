@@ -676,7 +676,7 @@ def plotSignal(time, signal, filename=None, spectrum_cut=1e-4) -> None:
     plt.tight_layout()
     if filename:
         print("saving plot in " + filename)
-        plt.savefig(filename)
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
     else:
         plt.show()
     plt.close()
@@ -740,13 +740,13 @@ def plotOccupations(
     # show and save
     if filename:
         print("saving plot in " + filename)
-        plt.savefig(filename)
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
     else:
         plt.show()
     plt.close()
 
 
-def plotMatrix(M: np.array, filename: str = None):
+def plotMatrix(M: np.array, filename: str = None, labels: List[str] = None):
     z1 = np.absolute(M)
     z2 = np.angle(M)
 
@@ -771,7 +771,7 @@ def plotMatrix(M: np.array, filename: str = None):
     rgba = [cmap((k + np.pi) / (2 * np.pi)) for k in dz2]
 
     # plotting
-    fig = plt.figure()
+    fig = plt.figure(figsize=(15, 8))
     ax = fig.add_subplot(111, projection="3d")
     for idx, cur_zpos in enumerate(zpos):
         ax.bar3d(
@@ -786,16 +786,20 @@ def plotMatrix(M: np.array, filename: str = None):
         )
 
     # labels and ticks
-    column_names = [bin(i)[2:].zfill(int(np.log2(lx))) for i in range(lx)]
-    row_names = [bin(i)[2:].zfill(int(np.log2(ly))) for i in range(ly)]
+    if labels is not None and len(labels) >= max(lx, ly):
+        column_names = labels[:lx]
+        row_names = labels[:ly]
+    else:
+        column_names = [bin(i)[2:].zfill(int(np.log2(lx))) for i in range(lx)]
+        row_names = [bin(i)[2:].zfill(int(np.log2(ly))) for i in range(ly)]
     ax.set_xticks(np.arange(0.5, lx + 0.5, 1))
     ax.set_yticks(np.arange(0.5, ly + 0.5, 1))
     ax.w_xaxis.set_ticklabels(row_names, fontsize=12, rotation=45, ha="right", va="top")
     ax.w_yaxis.set_ticklabels(
         column_names, fontsize=12, rotation=-22.5, ha="left", va="center"
     )
-    ax.set_xlabel("in")
-    ax.set_ylabel("out")
+    ax.set_xlabel("in", fontsize=16, labelpad=20)
+    ax.set_ylabel("out", fontsize=16, labelpad=20)
 
     # colour bar
     norm = mplcolors.Normalize(vmin=-np.pi, vmax=np.pi)
@@ -809,10 +813,10 @@ def plotMatrix(M: np.array, filename: str = None):
     cbar.ax.set_yticklabels(["$-\\pi$", "$\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
 
     # show and save
-    plt.tight_layout()
+    # plt.tight_layout()
     if filename:
         print("saving plot in " + filename)
-        plt.savefig(filename)
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
     else:
         plt.show()
     plt.close()
