@@ -127,7 +127,11 @@ def state_transfer_infid(
 
 @fid_reg_deco
 def unitary_infid(
-    ideal: np.array, actual: tf.Tensor, index: List[int] = None, dims=None
+    ideal: np.array,
+    actual: tf.Tensor,
+    index: List[int] = None,
+    dims=None,
+    active_levels=2,
 ) -> tf.Tensor:
     """
     Unitary overlap between ideal and actually performed gate.
@@ -152,14 +156,18 @@ def unitary_infid(
     """
     if index is None:
         index = list(range(len(dims)))
-    actual_comp = tf_project_to_comp(actual, dims=dims, index=index)
-    fid_lvls = 2 ** len(index)
+    actual_comp = tf_project_to_comp(
+        actual, dims=dims, index=index, outdims=[active_levels] * len(dims)
+    )
+    fid_lvls = active_levels ** len(index)
     infid = 1 - tf_unitary_overlap(actual_comp, ideal, lvls=fid_lvls)
     return infid
 
 
 @fid_reg_deco
-def unitary_infid_set(propagators: dict, instructions: dict, index, dims, n_eval=-1):
+def unitary_infid_set(
+    propagators: dict, instructions: dict, index, dims, active_levels=2, n_eval=-1
+):
     """
     Mean unitary overlap between ideal and actually performed gate for the gates in
     propagators.
@@ -185,8 +193,12 @@ def unitary_infid_set(propagators: dict, instructions: dict, index, dims, n_eval
     """
     infids = []
     for gate, propagator in propagators.items():
-        perfect_gate = instructions[gate].get_ideal_gate(dims, index)
-        infid = unitary_infid(perfect_gate, propagator, index, dims)
+        perfect_gate = instructions[gate].get_ideal_gate(
+            dims, index, active_levels=active_levels
+        )
+        infid = unitary_infid(
+            perfect_gate, propagator, index, dims, active_levels=active_levels
+        )
         infids.append(infid)
     return tf.reduce_mean(infids)
 
