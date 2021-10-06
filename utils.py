@@ -261,16 +261,18 @@ def createDoubleGaussianPulse(
     """
     gauss_params = {
         "amp": Quantity(value=3, min_val=0.2, max_val=3, unit="V"),
-        "t_final": scaled_quantity(t_final, 0.5, "s"),
+        "t_final": scaled_quantity(t_final, 0.1, "s"),
         "sigma": Quantity(
             value=sigma, min_val=0.5 * sigma, max_val=2 * sigma, unit="s"
         ),
         "sigma2": Quantity(
             value=sigma2, min_val=0.5 * sigma2, max_val=2 * sigma2, unit="s"
         ),
-        "relative_amp": Quantity(value=relative_amp, min_val=0.1, max_val=5, unit=""),
-        "xy_angle": Quantity(0, unit="rad"),
-        "freq_offset": Quantity(0, unit="Hz 2pi"),
+        "relative_amp": Quantity(value=relative_amp, min_val=0.2, max_val=5, unit=""),
+        "xy_angle": Quantity(
+            value=0.0, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
+        ),
+        "freq_offset": Quantity(value=-3e6, min_val=-6e6, max_val=2e6, unit="Hz 2pi"),
         "delta": Quantity(value=0, min_val=-5, max_val=3, unit=""),
     }
 
@@ -283,17 +285,22 @@ def createDoubleGaussianPulse(
 
 
 def createPWCPulse(
-    t_final: float, num_pieces: int, shape_fctn: Callable
+    t_final: float,
+    num_pieces: int,
+    shape_fctn: Callable,
+    values: tf.Tensor = None,
+    custom_params: Dict = None,
 ) -> pulse.Envelope:
     """
     Creates a piece-wise constant envelope using the given shape function.
     """
-    t = tf.linspace(0.0, t_final, num_pieces)
-    values = shape_fctn(t)
+    if values is None:
+        t = tf.linspace(0.0, t_final, num_pieces)
+        values = shape_fctn(t)
 
     params = {
         "amp": Quantity(value=0.5, min_val=0.2, max_val=0.6, unit="V"),
-        "t_final": scaled_quantity(t_final, 0.5, "s"),
+        "t_final": scaled_quantity(t_final, 0.1, "s"),
         "xy_angle": Quantity(
             value=0.0, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
         ),
@@ -305,17 +312,20 @@ def createPWCPulse(
         "t_bin_end": Quantity(t_final),
         "inphase": Quantity(values),
     }
+    if custom_params is not None:
+        for key, value in custom_params.items():
+            params[key].set_value(value)
 
     return pulse.Envelope(
-        name="gauss",
-        desc="Gaussian envelope",
+        name="pwc",
+        desc="PWC envelope",
         params=params,
         shape=envelopes.pwc_shape,
     )
 
 
 def createPWCGaussianPulse(
-    t_final: float, sigma: float, num_pieces: int
+    t_final: float, sigma: float, num_pieces: int, values: tf.Tensor = None
 ) -> pulse.Envelope:
     """
     Creates a piece-wise constant envelope with a Gaussian form.
@@ -324,6 +334,7 @@ def createPWCGaussianPulse(
         t_final,
         num_pieces,
         lambda t: tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2)),
+        values,
     )
 
 
