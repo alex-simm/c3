@@ -126,17 +126,7 @@ class SingleQubitExperiment:
 
     def plotPropagator(self, name: str) -> None:
         U = self.__experiment.propagators[self.__gate.get_key()]
-        utils.plotMatrix(
-            U,
-            self.__createFileName(name, "png"),
-            labels=[
-                "$|0,0\\rangle$",
-                "$|0,1\\rangle$",
-                "$|1,0\\rangle$",
-                "$|1,1\\rangle$",
-                "leakage",
-            ],
-        )
+        utils.plotMatrix(U, self.__createFileName(name, "png"))
 
     def optimise(
         self,

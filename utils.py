@@ -19,9 +19,8 @@ from c3.optimizers.optimalcontrol import OptimalControl
 from c3.signal.gates import Instruction
 from scipy.signal import find_peaks
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import matplotlib.colors as mplcolors
 
 """
 TODO:
@@ -746,16 +745,41 @@ def plotOccupations(
     plt.close()
 
 
-def plotMatrix(M: np.array, filename: str = None, labels: List[str] = None):
+def plotComplexMatrix(
+    M: np.array,
+    colourMap: mpl.colors.Colormap,
+    xlabels: List[str] = None,
+    ylabels: List[str] = None,
+) -> mpl.figure.Figure:
+    """
+    Plots a complex matrix as a 3d bar plot, where the radius is the bar height and the phase defines
+    the bar colour.
+
+    Parameters
+    ----------
+    M : np.array
+      the matrix to plot
+    colourMap : matplotlib.colors.Colormap
+      a Colormap to be used for the phases
+    xlabels : List[str]
+      labels for the x-axis
+    ylabels : List[str]
+      labels for the y-axis
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+      the figure in which the plot was created
+    """
     z1 = np.absolute(M)
     z2 = np.angle(M)
 
     # mesh
-    lx = len(z1[0])
-    ly = len(z1[:, 0])
-    xpos = np.arange(0, lx, 1)
-    ypos = np.arange(0, ly, 1)
-    xpos, ypos = np.meshgrid(xpos + 0.25, ypos + 0.25)
+    lx = z1.shape[1]
+    ly = z1.shape[0]
+    xpos, ypos = np.meshgrid(
+        np.arange(0.25, lx + 0.25, 1), np.arange(0.25, ly + 0.25, 1)
+    )
     xpos = xpos.flatten()
     ypos = ypos.flatten()
     zpos = np.zeros(lx * ly)
@@ -766,57 +790,139 @@ def plotMatrix(M: np.array, filename: str = None, labels: List[str] = None):
     dz1 = z1.flatten()
     dz2 = z2.flatten()
 
-    # colours
-    cmap = cm.get_cmap("viridis")
-    rgba = [cmap((k + np.pi) / (2 * np.pi)) for k in dz2]
-
-    # plotting
-    fig = plt.figure(figsize=(15, 8))
-    ax = fig.add_subplot(111, projection="3d")
+    # plot the bars
+    fig = plt.figure()
+    axis = fig.add_subplot(111, projection="3d")
     for idx, cur_zpos in enumerate(zpos):
-        ax.bar3d(
+        color = colourMap((dz2[idx] + np.pi) / (2 * np.pi))
+        axis.bar3d(
             xpos[idx],
             ypos[idx],
             cur_zpos,
             dx[idx],
             dy[idx],
             dz1[idx],
-            alpha=0.6,
-            color=rgba[idx],
+            alpha=1,
+            color=color,
         )
 
-    # labels and ticks
-    if labels is not None and len(labels) >= max(lx, ly):
-        column_names = labels[:lx]
-        row_names = labels[:ly]
-    else:
-        column_names = [bin(i)[2:].zfill(int(np.log2(lx))) for i in range(lx)]
-        row_names = [bin(i)[2:].zfill(int(np.log2(ly))) for i in range(ly)]
-    ax.set_xticks(np.arange(0.5, lx + 0.5, 1))
-    ax.set_yticks(np.arange(0.5, ly + 0.5, 1))
-    ax.w_xaxis.set_ticklabels(row_names, fontsize=12, rotation=45, ha="right", va="top")
-    ax.w_yaxis.set_ticklabels(
-        column_names, fontsize=12, rotation=-22.5, ha="left", va="center"
-    )
-    ax.set_xlabel("in", fontsize=16, labelpad=20)
-    ax.set_ylabel("out", fontsize=16, labelpad=20)
+    # view, ticks and labels
+    axis.view_init(elev=30, azim=-15)
+    axis.set_xticks(np.arange(0.5, lx + 0.5, 1))
+    axis.set_yticks(np.arange(0.5, ly + 0.5, 1))
+    if xlabels is not None:
+        axis.w_xaxis.set_ticklabels(xlabels, fontsize=12)
+    if ylabels is not None:
+        axis.w_yaxis.set_ticklabels(ylabels, fontsize=12)
 
     # colour bar
-    norm = mplcolors.Normalize(vmin=-np.pi, vmax=np.pi)
+    norm = mpl.colors.Normalize(vmin=-np.pi, vmax=np.pi)
     cbar = fig.colorbar(
-        cm.ScalarMappable(norm=norm, cmap=cmap),
-        ax=ax,
+        mpl.cm.ScalarMappable(norm=norm, cmap=colourMap),
+        ax=axis,
         shrink=0.6,
         pad=0.1,
         ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
     )
     cbar.ax.set_yticklabels(["$-\\pi$", "$\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
 
-    # show and save
-    # plt.tight_layout()
-    if filename:
-        print("saving plot in " + filename)
-        plt.savefig(filename, bbox_inches="tight", dpi=100)
+    return fig
+
+
+def plotComplexPhase(
+    M: np.array,
+    colourMap: mpl.colors.Colormap,
+    xlabels: List[str] = None,
+    ylabels: List[str] = None,
+):
+    """
+    Plots the phase of a complex matrix as a 2d colour plot.
+
+    Parameters
+    ----------
+    M : np.array
+      the matrix to plot
+    colourMap : matplotlib.colors.Colormap
+      a Colormap to be used for the phases
+    xlabels : List[str]
+      labels for the x-axis
+    ylabels : List[str]
+      labels for the y-axis
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+      the figure in which the plot was created
+    """
+    phase = np.angle(M)
+
+    # grid
+    lx = M.shape[1]
+    ly = M.shape[0]
+    extent = [0.5, lx + 0.5, 0.5, ly + 0.5]
+
+    # plot
+    fig = plt.figure()
+    axis = fig.add_subplot(111)
+    norm = mpl.colors.Normalize(vmin=-np.pi, vmax=np.pi)
+    axis.imshow(
+        phase,
+        cmap=colourMap,
+        norm=norm,
+        interpolation=None,
+        extent=extent,
+        aspect="auto",
+        origin="lower",
+    )
+
+    # ticks and labels
+    axis.set_xticks(np.arange(1, lx + 1, 1))
+    axis.set_yticks(np.arange(1, ly + 1, 1))
+    if xlabels is not None:
+        axis.xaxis.set_ticklabels(xlabels, fontsize=12)
+    if ylabels is not None:
+        axis.yaxis.set_ticklabels(ylabels, fontsize=12)
+
+    # colour bar
+    norm = mpl.colors.Normalize(vmin=-np.pi, vmax=np.pi)
+    cbar = fig.colorbar(
+        mpl.cm.ScalarMappable(norm=norm, cmap=colourMap),
+        ax=axis,
+        shrink=0.8,
+        pad=0.1,
+        ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
+    )
+    cbar.ax.set_yticklabels(["$-\\pi$", "$\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
+
+    return fig
+
+
+def plotMatrix(M: np.array, filename1: str = None, filename2: str = None):
+    # create tick labels
+    lx = M.shape[1]
+    ly = M.shape[0]
+    ylabels = [
+        "$|" + bin(i)[2:].zfill(int(np.log2(lx))) + "\\rangle$" for i in range(lx)
+    ]
+    xlabels = [
+        "$|" + bin(i)[2:].zfill(int(np.log2(ly))) + "\\rangle$" for i in range(ly)
+    ]
+
+    # plot 1
+    cmap = mpl.cm.get_cmap("cividis")
+    plotComplexMatrix(M, cmap, xlabels, ylabels)
+    if filename1:
+        print("saving plot in " + filename1)
+        plt.savefig(filename1, bbox_inches="tight", dpi=100)
+    else:
+        plt.show()
+    plt.close()
+
+    # plot 2
+    plotComplexPhase(M, cmap, xlabels, ylabels)
+    if filename2:
+        print("saving plot in " + filename2)
+        plt.savefig(filename2, bbox_inches="tight", dpi=100)
     else:
         plt.show()
     plt.close()
