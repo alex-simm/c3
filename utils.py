@@ -692,6 +692,71 @@ def plotSignal(time, signal, filename=None, spectrum_cut=1e-4) -> None:
     plt.close()
 
 
+def plotComplexSignal(time, signal, filename=None, spectrum_cut=1e-4) -> None:
+    """
+    Plots a time dependent signal and its normalised frequency spectrum.
+
+    Parameters
+    ----------
+    time
+        timestamps
+    signal
+        signal value
+    filename: str
+        Optional name of the file to which the plot will be saved. If none,
+        it will only be shown.
+    spectrum_cut:
+        If not None, only the part of the normalised spectrum will be plotted
+        whose absolute square is larger than this value.
+
+    Returns
+    -------
+
+    """
+    # plot time domain
+    time = time.flatten()
+    signal = signal.flatten()
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    absSq = signal.real ** 2 + signal.imag ** 2
+    axs[0].set_title("Signal")
+    axs[0].plot(time, signal.real, label="Re")
+    axs[0].plot(time, signal.imag, label="Im")
+    axs[0].plot(time, absSq, label="AbsSq")
+    axs[0].set_xlabel("time")
+    axs[0].legend()
+
+    # calculate frequency spectrum
+    freq_signal = np.fft.fftshift(np.fft.rfft(absSq))
+    if np.abs(np.max(freq_signal)) > 1e-14:
+        normalised = freq_signal / np.max(freq_signal)
+    else:
+        normalised = freq_signal
+    freq = np.fft.fftshift(np.fft.rfftfreq(len(time), time[-1] / len(time)))
+
+    # cut spectrum if necessary
+    if spectrum_cut is not None:
+        limits = np.flatnonzero(np.abs(normalised) ** 2 > spectrum_cut)
+        freq = freq[limits[0] : limits[-1]]
+        normalised = normalised[limits[0] : limits[-1]]
+
+    # plot frequency domain
+    axs[1].set_title("Spectrum")
+    axs[1].plot(freq, normalised.real, label="Re")
+    axs[1].plot(freq, normalised.imag, label="Im")
+    axs[1].plot(freq, np.abs(normalised) ** 2, label="Abs-Square")
+    axs[1].set_xlabel("frequency")
+    axs[1].legend()
+
+    # show and save
+    plt.tight_layout()
+    if filename:
+        print("saving plot in " + filename)
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
+    else:
+        plt.show()
+    plt.close()
+
+
 def plotOccupations(
     experiment: Experiment,
     populations: np.array,
