@@ -985,7 +985,7 @@ def plotMatrix(M: np.array, filename1: str = None, filename2: str = None):
     ]
 
     # plot 1
-    cmap = mpl.cm.get_cmap("cividis")
+    cmap = mpl.cm.get_cmap("nipy_spectral")
     plotComplexMatrix(M, cmap, xlabels, ylabels)
     if filename1:
         print("saving plot in " + filename1)
