@@ -985,20 +985,16 @@ def plotMatrix(M: np.array, filename1: str = None, filename2: str = None):
     ]
 
     # plot 1
-    cmap = mpl.cm.get_cmap("nipy_spectral")
-    plotComplexMatrix(M, cmap, xlabels, ylabels)
-    if filename1:
+    if filename1 is not None:
+        cmap = mpl.cm.get_cmap("nipy_spectral")
+        plotComplexMatrix(M, cmap, xlabels, ylabels)
         print("saving plot in " + filename1)
         plt.savefig(filename1, bbox_inches="tight", dpi=100)
-    else:
-        plt.show()
-    plt.close()
+        plt.close()
 
     # plot 2
-    plotComplexPhase(M, cmap, xlabels, ylabels)
-    if filename2:
+    if filename2 is not None:
+        plotComplexPhase(M, cmap, xlabels, ylabels)
         print("saving plot in " + filename2)
         plt.savefig(filename2, bbox_inches="tight", dpi=100)
-    else:
-        plt.show()
-    plt.close()
+        plt.close()
