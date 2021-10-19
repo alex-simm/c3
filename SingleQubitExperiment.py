@@ -1,18 +1,16 @@
-import pathlib
-from typing import Callable, Dict, List
+from typing import Callable, Dict
 import numpy as np
 import utils as utils
 import tensorflow as tf
 import c3.signal.pulse as pulse
-import c3.utils.qt_utils as qt_utils
-import c3.libraries.constants as constants
 import c3.libraries.chip as chip
 from c3.parametermap import ParameterMap
 from c3.experiment import Experiment
 from c3.signal.gates import Instruction
+from DataOutput import DataOutput
 
 
-class SingleQubitExperiment:
+class SingleQubitExperiment(DataOutput):
     __directory: str
     __file_prefix: str
     __file_suffix: str
@@ -21,19 +19,11 @@ class SingleQubitExperiment:
     __gate: Instruction
     __t_final: float
     __init_state: tf.Tensor
-    __sequence: List[str]
 
     def __init__(
-        self, file_prefix: str = None, file_suffix: str = None, directory: str = None
+        self, directory: str, file_prefix: str = None, file_suffix: str = None
     ):
-        self.__file_prefix = file_prefix
-        self.__file_suffix = file_suffix
-
-        if directory is None:
-            directory = "./output"
-        output_dir = pathlib.Path(directory)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        self.__directory = directory
+        super().__init__(directory, file_prefix, file_suffix)
 
     def prepare(
         self,
@@ -42,6 +32,7 @@ class SingleQubitExperiment:
         anharm: float,
         carrier_freq: float,
         envelope: pulse.Envelope,
+        ideal_gate: np.array,
         useDrag=True,
     ):
         self.__t_final = t_final
@@ -53,17 +44,22 @@ class SingleQubitExperiment:
         generator = utils.createGenerator(model, useDrag)
 
         # gate
-        ideal = qt_utils.np_kron_n([constants.Id, constants.x90p])
-        self.__gate = utils.createSingleQubitGate(
-            "lower-X", t_final, carrier_freq, envelope, model, self.__qubit, ideal
+        utils.plotMatrix(
+            ideal_gate,
+            self.__createFileName("ideal_propagator_a", "png"),
+            self.__createFileName("ideal_propagator_b", "png"),
         )
-        self.__sequence = [self.__gate.get_key()]
+        gate = utils.createSingleQubitGate(
+            "gate", t_final, carrier_freq, envelope, model, self.__qubit, ideal_gate
+        )
+        self.__gates = [gate]
 
         # experiment
-        gates = [self.__gate]
-        gate_names = list(map(lambda g: g.get_key(), gates))
+        gate_names = list(map(lambda g: g.get_key(), self.__gates))
         self.__experiment = Experiment(
-            pmap=ParameterMap(instructions=gates, model=model, generator=generator)
+            pmap=ParameterMap(
+                instructions=self.__gates, model=model, generator=generator
+            )
         )
         self.__experiment.set_opt_gates(gate_names)
         self.__experiment.compute_propagators()
@@ -91,6 +87,13 @@ class SingleQubitExperiment:
             utils.getDrive(self.__experiment.pmap.model, self.__qubit).name
         ]
 
+    def saveSignal(self, name: str) -> None:
+        signal = self.generateSignal()
+        np.save(
+            self.__createFileName(name, ""),
+            [signal["ts"].numpy(), signal["values"].numpy()],
+        )
+
     def plotSignal(self, name: str) -> None:
         """
         Generates a signal, plots it, and saves it to a file with the given name in the experiment's directory.
@@ -104,16 +107,22 @@ class SingleQubitExperiment:
         )
 
     def runTimeEvolution(self) -> np.array:
+        gate_names = list(map(lambda g: g.get_key(), self.__gates))
         return utils.runTimeEvolutionDefault(
-            self.__experiment, self.__init_state, self.__sequence
+            self.__experiment, self.__init_state, gate_names
         )
+
+    def saveTimeEvolution(self, name: str) -> None:
+        populations = self.runTimeEvolution()
+        np.save(self.__createFileName(name, ""), populations)
 
     def plotTimeEvolution(self, name: str) -> None:
         populations = self.runTimeEvolution()
+        gate_names = list(map(lambda g: g.get_key(), self.__gates))
         utils.plotOccupations(
             self.__experiment,
             populations,
-            self.__sequence,
+            gate_names,
             filename=self.__createFileName(name, "png"),
             level_names=[
                 "$|0,0\\rangle$",
@@ -124,9 +133,19 @@ class SingleQubitExperiment:
             ],
         )
 
+    def savePropagator(self, name: str) -> None:
+        for gate in self.__gates:
+            U = self.__experiment.propagators[gate.get_key()]
+            np.save(self.__createFileName(name + "-" + gate.get_key(), ""), U)
+
     def plotPropagator(self, name: str) -> None:
-        U = self.__experiment.propagators[self.__gate.get_key()]
-        utils.plotMatrix(U, self.__createFileName(name, "png"))
+        for gate in self.__gates:
+            U = self.__experiment.propagators[gate.get_key()]
+            utils.plotMatrix(
+                U,
+                self.__createFileName(name + "-" + gate.get_key() + "_a", "png"),
+                self.__createFileName(name + "-" + gate.get_key() + "_b", "png"),
+            )
 
     def optimise(
         self,
@@ -138,11 +157,10 @@ class SingleQubitExperiment:
         callback: Callable = None,
     ):
         # optimise
-        optimisable_gates = list(filter(lambda g: g.get_key() != "id[]", [self.__gate]))
+        optimisable_gates = list(filter(lambda g: g.get_key() != "id[]", self.__gates))
         gateset_opt_map = utils.createOptimisableParameterMap(
             self.__experiment, optimisable_gates, optimisable_params
         )
-        # callback = lambda fidelity: print(fidelity)
         params_before, final_fidelity, params_after = utils.optimise(
             self.__experiment,
             optimisable_gates,
@@ -158,14 +176,3 @@ class SingleQubitExperiment:
         print("after:\n", params_after)
         print("fidelity:\n", final_fidelity)
         return params_after
-
-    def __createFileName(self, name, extension=None):
-        s = self.__directory + "/"
-        if self.__file_prefix is not None and len(self.__file_prefix) > 0:
-            s = self.__file_prefix + "_" + s
-        s += name
-        if self.__file_suffix is not None and len(self.__file_suffix) > 0:
-            s += "_" + self.__file_suffix
-        if extension is not None and len(extension) > 0:
-            s += "." + extension
-        return s
