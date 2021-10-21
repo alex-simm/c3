@@ -809,7 +809,10 @@ def plotOccupations(
     axs.tick_params(direction="in", left=True, right=True, top=False, bottom=True)
     axs.set_xlabel("Time [ns]")
     axs.set_ylabel("Population")
-    plt.legend(level_names if level_names else experiment.pmap.model.state_labels)
+    plt.legend(
+        level_names if level_names else experiment.pmap.model.state_labels,
+        ncol=int(np.ceil(experiment.pmap.model.tot_dim / 9)),
+    )
     plt.tight_layout()
 
     # show and save
@@ -886,10 +889,11 @@ def plotComplexMatrix(
     axis.view_init(elev=30, azim=-15)
     axis.set_xticks(np.arange(0.5, lx + 0.5, 1))
     axis.set_yticks(np.arange(0.5, ly + 0.5, 1))
+    tickFontSize = 13 - 2 * (len(xlabels) / 8)
     if xlabels is not None:
-        axis.w_xaxis.set_ticklabels(xlabels, fontsize=12)
+        axis.w_xaxis.set_ticklabels(xlabels, fontsize=tickFontSize)
     if ylabels is not None:
-        axis.w_yaxis.set_ticklabels(ylabels, fontsize=12)
+        axis.w_yaxis.set_ticklabels(ylabels, fontsize=tickFontSize, rotation=-65)
 
     # colour bar
     norm = mpl.colors.Normalize(vmin=-np.pi, vmax=np.pi)
@@ -905,14 +909,15 @@ def plotComplexMatrix(
     return fig
 
 
-def plotComplexPhase(
+def plotComplexPart(
     M: np.array,
     colourMap: mpl.colors.Colormap,
     xlabels: List[str] = None,
     ylabels: List[str] = None,
+    phase: bool = True,
 ):
     """
-    Plots the phase of a complex matrix as a 2d colour plot.
+    Plots the phase or amplitude of a complex matrix as a 2d colour plot.
 
     Parameters
     ----------
@@ -924,13 +929,15 @@ def plotComplexPhase(
       labels for the x-axis
     ylabels : List[str]
       labels for the y-axis
+    phase : bool
+      whether the phase or the absolute value should be plotted
 
     Returns
     -------
     matplotlib.figure.Figure
       the figure in which the plot was created
     """
-    phase = np.angle(M)
+    data = np.angle(M) if phase else np.abs(M)
 
     # grid
     lx = M.shape[1]
@@ -942,7 +949,7 @@ def plotComplexPhase(
     axis = fig.add_subplot(111)
     norm = mpl.colors.Normalize(vmin=-np.pi, vmax=np.pi)
     axis.imshow(
-        phase,
+        data,
         cmap=colourMap,
         norm=norm,
         interpolation=None,
@@ -955,25 +962,33 @@ def plotComplexPhase(
     axis.set_xticks(np.arange(1, lx + 1, 1))
     axis.set_yticks(np.arange(1, ly + 1, 1))
     if xlabels is not None:
-        axis.xaxis.set_ticklabels(xlabels, fontsize=12)
+        axis.xaxis.set_ticklabels(xlabels, fontsize=12, rotation=-90)
     if ylabels is not None:
         axis.yaxis.set_ticklabels(ylabels, fontsize=12)
 
     # colour bar
-    norm = mpl.colors.Normalize(vmin=-np.pi, vmax=np.pi)
+    if phase:
+        norm = mpl.colors.Normalize(vmin=-np.pi, vmax=np.pi)
+        ticks = [-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi]
+    else:
+        norm = mpl.colors.Normalize(vmin=0, vmax=np.max(data))
+        ticks = np.linspace(0, np.max(data), 5)
     cbar = fig.colorbar(
         mpl.cm.ScalarMappable(norm=norm, cmap=colourMap),
         ax=axis,
         shrink=0.8,
         pad=0.1,
-        ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
+        ticks=ticks,
     )
-    cbar.ax.set_yticklabels(["$-\\pi$", "$\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
+    if phase:
+        cbar.ax.set_yticklabels(["$-\\pi$", "$\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
 
     return fig
 
 
-def plotMatrix(M: np.array, filename1: str = None, filename2: str = None):
+def plotMatrix(
+    M: np.array, filename1: str = None, filename2: str = None, filename3: str = None
+):
     # create tick labels
     lx = M.shape[1]
     ly = M.shape[0]
@@ -984,7 +999,7 @@ def plotMatrix(M: np.array, filename1: str = None, filename2: str = None):
         "$|" + bin(i)[2:].zfill(int(np.log2(ly))) + "\\rangle$" for i in range(ly)
     ]
 
-    # plot 1
+    # full matrix
     if filename1 is not None:
         cmap = mpl.cm.get_cmap("nipy_spectral")
         plotComplexMatrix(M, cmap, xlabels, ylabels)
@@ -992,9 +1007,16 @@ def plotMatrix(M: np.array, filename1: str = None, filename2: str = None):
         plt.savefig(filename1, bbox_inches="tight", dpi=100)
         plt.close()
 
-    # plot 2
+    # phase
     if filename2 is not None:
-        plotComplexPhase(M, cmap, xlabels, ylabels)
+        plotComplexPart(M, cmap, xlabels, ylabels, phase=True)
         print("saving plot in " + filename2)
         plt.savefig(filename2, bbox_inches="tight", dpi=100)
+        plt.close()
+
+    # amplitude
+    if filename3 is not None:
+        plotComplexPart(M, cmap, xlabels, ylabels, phase=False)
+        print("saving plot in " + filename3)
+        plt.savefig(filename3, bbox_inches="tight", dpi=100)
         plt.close()
