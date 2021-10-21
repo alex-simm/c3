@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Tuple
 import numpy as np
 import utils as utils
 import tensorflow as tf
@@ -10,8 +10,9 @@ from c3.signal.gates import Instruction
 from multi_level_qubits.DataOutput import DataOutput
 
 
-class SingleQubitExperiment(DataOutput):
-    __qubit: chip.Qubit
+class TwoQubitsExperiment(DataOutput):
+    __qubit1: chip.Qubit
+    __qubit2: chip.Qubit
     __experiment: Experiment
     __gate: Instruction
     __t_final: float
@@ -20,13 +21,13 @@ class SingleQubitExperiment(DataOutput):
     def __init__(
         self, directory: str, file_prefix: str = None, file_suffix: str = None
     ):
-        super(SingleQubitExperiment, self).__init__(directory, file_prefix, file_suffix)
+        super(TwoQubitsExperiment, self).__init__(directory, file_prefix, file_suffix)
 
     def prepare(
         self,
         t_final: float,
-        freq: float,
-        anharm: float,
+        freqs: Tuple[float, float],
+        anharms: Tuple[float, float],
         carrier_freq: float,
         envelope: pulse.Envelope,
         ideal_gate: np.array,
@@ -36,13 +37,14 @@ class SingleQubitExperiment(DataOutput):
         self.__t_final = t_final
 
         # model
-        self.__qubit = utils.createQubit(1, 5, freq, -anharm)
-        model = utils.createModel([self.__qubit])
+        self.__qubit1 = utils.createQubit(1, 5, freqs[0], -anharms[0])
+        self.__qubit2 = utils.createQubit(2, 5, freqs[1], -anharms[1])
+        model = utils.createModel([self.__qubit1, self.__qubit2])
         generator = utils.createGenerator(model, useDrag)
 
         # gate
         self.__gate = utils.createSingleQubitGate(
-            "gate", t_final, carrier_freq, envelope, model, self.__qubit, ideal_gate
+            "gate", t_final, carrier_freq, envelope, model, self.__qubit1, ideal_gate
         )
 
         # experiment
@@ -62,10 +64,10 @@ class SingleQubitExperiment(DataOutput):
         return self.__init_state
 
     def getEnergies(self) -> np.array:
-        return self.__qubit.get_Hamiltonian().numpy().diagonal().real
+        return self.__experiment.pmap.model.get_Hamiltonian().numpy().diagonal().real
 
-    def getQubit(self) -> chip.Qubit:
-        return self.__qubit
+    def getQubits(self) -> Tuple[chip.Qubit, chip.Qubit]:
+        return self.__qubit1, self.__qubit2
 
     def getExperiment(self) -> Experiment:
         return self.__experiment
@@ -75,7 +77,7 @@ class SingleQubitExperiment(DataOutput):
         Makes the generator generate a signal and returns it.
         """
         return self.__experiment.pmap.generator.generate_signals(self.__gate)[
-            utils.getDrive(self.__experiment.pmap.model, self.__qubit).name
+            utils.getDrive(self.__experiment.pmap.model, self.__qubit1).name
         ]
 
     def saveSignal(self, name: str) -> None:
@@ -115,13 +117,13 @@ class SingleQubitExperiment(DataOutput):
             populations,
             gate_names,
             filename=super().createFileName(name, "png"),
-            level_names=[
-                "$|0,0\\rangle$",
-                "$|0,1\\rangle$",
-                "$|1,0\\rangle$",
-                "$|1,1\\rangle$",
-                "leakage",
-            ],
+            # level_names=[
+            #    "$|0,0\\rangle$",
+            #    "$|0,1\\rangle$",
+            #    "$|1,0\\rangle$",
+            #    "$|1,1\\rangle$",
+            #    "leakage",
+            # ],
         )
 
     def savePropagator(self, name: str) -> None:
