@@ -137,3 +137,9 @@ class Generator:
         if "crosstalk" in self.devices:
             gen_signal = self.devices["crosstalk"].process(signal=gen_signal)
         return gen_signal
+
+    def getDeviceOutput(self, channel: str, deviceId: str):
+        for key, value in self.gen_stacked_signals[channel]:
+            if key == deviceId:
+                return value
+        return None
