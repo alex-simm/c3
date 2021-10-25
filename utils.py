@@ -21,6 +21,7 @@ from scipy.signal import find_peaks
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import itertools
 
 """
 TODO:
@@ -60,6 +61,22 @@ def getDrive(model: Model, qubit: chip.Qubit) -> chip.Drive:
     ]
     connected = list(filter(lambda d: qubit.name in d.connected, drives))
     return connected[0] if len(connected) > 0 else None
+
+
+def splitQubitOccupations(
+    population: np.array, dims: List[int]
+) -> Tuple[np.array, np.array]:
+    qubit_levels = []
+    for dim in dims:
+        qubit_levels.append(list(range(dim)))
+    combined_levels = list(itertools.product(*qubit_levels))
+
+    qubit1Population = np.zeros((dims[0], population.shape[1]))
+    qubit2Population = np.zeros((dims[0], population.shape[1]))
+    for idx, levels in enumerate(combined_levels):
+        qubit1Population[levels[0]] += population[idx]
+        qubit2Population[levels[1]] += population[idx]
+    return qubit1Population, qubit2Population
 
 
 # ====================== creating models and experiments ======================
@@ -154,7 +171,7 @@ def createModel(
     # create the model
     model = Model(qubits, line_components, [init_ground])
     model.set_lindbladian(False)
-    model.set_dressed(True)
+    model.set_dressed(False)  #
     model.set_FR(False)
     return model
 
@@ -692,6 +709,74 @@ def plotSignal(time, signal, filename=None, spectrum_cut=1e-4) -> None:
     plt.close()
 
 
+def plotSignalWithEnvelope(
+    time, signal, envelope, pwc_times=None, filename=None, spectrum_cut=1e-4
+) -> None:
+    """
+    Plots a time dependent signal and its normalised frequency spectrum.
+
+    Parameters
+    ----------
+    time
+        timestamps
+    signal
+        signal value
+    filename: str
+        Optional name of the file to which the plot will be saved. If none,
+        it will only be shown.
+    spectrum_cut:
+        If not None, only the part of the normalised spectrum will be plotted
+        whose absolute square is larger than this value.
+
+    Returns
+    -------
+
+    """
+    # plot time domain
+    time = time.flatten()
+    signal = signal.flatten()
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    axs[0].set_title("Signal")
+    axs[0].plot(time, signal)
+    print("envelope size: ", len(envelope[0]), len(envelope[1]))
+    if pwc_times is not None:
+        indices = [(np.abs(time - t)).argmin() for t in pwc_times]
+        axs[0].plot(envelope[0][indices], envelope[1][indices], "o", color="black")
+    axs[0].plot(envelope[0].flatten(), envelope[1].flatten(), "--", color="black")
+    axs[0].set_xlabel("time")
+
+    # calculate frequency spectrum
+    freq_signal = np.fft.rfft(signal)
+    if np.abs(np.max(freq_signal)) > 1e-14:
+        normalised = freq_signal / np.max(freq_signal)
+    else:
+        normalised = freq_signal
+    freq = np.fft.rfftfreq(len(time), time[-1] / len(time))
+
+    # cut spectrum if necessary
+    if spectrum_cut is not None:
+        limits = np.flatnonzero(np.abs(normalised) ** 2 > spectrum_cut)
+        freq = freq[limits[0] : limits[-1]]
+        normalised = normalised[limits[0] : limits[-1]]
+
+    # plot frequency domain
+    axs[1].set_title("Spectrum")
+    axs[1].plot(freq, normalised.real, label="Re")
+    axs[1].plot(freq, normalised.imag, label="Im")
+    axs[1].plot(freq, np.abs(normalised) ** 2, label="Square")
+    axs[1].set_xlabel("frequency")
+    axs[1].legend()
+
+    # show and save
+    plt.tight_layout()
+    if filename:
+        print("saving plot in " + filename)
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
+    else:
+        plt.show()
+    plt.close()
+
+
 def plotComplexSignal(time, signal, filename=None, spectrum_cut=1e-4) -> None:
     """
     Plots a time dependent signal and its normalised frequency spectrum.
@@ -813,6 +898,75 @@ def plotOccupations(
         level_names if level_names else experiment.pmap.model.state_labels,
         ncol=int(np.ceil(experiment.pmap.model.tot_dim / 9)),
     )
+    plt.tight_layout()
+
+    # show and save
+    if filename:
+        print("saving plot in " + filename)
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
+    else:
+        plt.show()
+    plt.close()
+
+
+def plotSplittedOccupations(
+    experiment: Experiment,
+    populations: np.array,
+    gate_sequence: List[str],
+    filename: str = None,
+) -> None:
+    """
+    Plots time dependent populations for two qubits in separate plots. They need to be calculated with `runTimeEvolution` first.
+
+    Parameters
+    ----------
+    experiment: Experiment
+        The experiment containing the model and propagators
+    populations: np.array
+        Population vector for each time step
+    gate_sequence: List[str]
+        List of gate names that will be applied to the state
+    level_names: List[str]
+        Optional list of names for the levels. If none, the default list
+        from the experiment will be used.
+    filename: str
+        Optional name of the file to which the plot will be saved. If none,
+        it will only be shown.
+
+    Returns
+    -------
+
+    """
+    # populations
+    fig, axs = plt.subplots(1, 2, sharey="all")
+    dt = experiment.ts[1] - experiment.ts[0]
+    ts = np.linspace(0.0, dt * populations.shape[1], populations.shape[1])
+    dims = [s.hilbert_dim for s in experiment.pmap.model.subsystems.values()]
+    splitted = splitQubitOccupations(populations, dims)
+
+    # positions of vertical lines
+    gate_steps = [experiment.partial_propagators[g].shape[0] for g in gate_sequence]
+    for i in range(1, len(gate_steps)):
+        gate_steps[i] += gate_steps[i - 1]
+    gate_times = gate_steps * dt
+
+    # create both subplots
+    for idx, ax in enumerate(axs):
+        ax.plot(ts / 1e-9, splitted[idx].T)
+        ax.vlines(
+            gate_times / 1e-9,
+            tf.reduce_min(populations),
+            tf.reduce_max(populations),
+            linestyles=":",
+            colors="black",
+        )
+
+        # set plot properties
+        ax.tick_params(direction="in", left=True, right=True, top=False, bottom=True)
+        ax.set_xlabel("Time [ns]")
+        ax.set_ylabel("Population")
+        ax.legend([str(x) for x in np.arange(dims[idx])])
+
     plt.tight_layout()
 
     # show and save
@@ -987,17 +1141,25 @@ def plotComplexPart(
 
 
 def plotMatrix(
-    M: np.array, filename1: str = None, filename2: str = None, filename3: str = None
+    M: np.array,
+    filename1: str = None,
+    filename2: str = None,
+    filename3: str = None,
+    labels: List[str] = None,
 ):
     # create tick labels
     lx = M.shape[1]
     ly = M.shape[0]
-    ylabels = [
-        "$|" + bin(i)[2:].zfill(int(np.log2(lx))) + "\\rangle$" for i in range(lx)
-    ]
-    xlabels = [
-        "$|" + bin(i)[2:].zfill(int(np.log2(ly))) + "\\rangle$" for i in range(ly)
-    ]
+    if labels is None:
+        ylabels = [
+            "$|" + bin(i)[2:].zfill(int(np.log2(lx))) + "\\rangle$" for i in range(lx)
+        ]
+        xlabels = [
+            "$|" + bin(i)[2:].zfill(int(np.log2(ly))) + "\\rangle$" for i in range(ly)
+        ]
+    else:
+        ylabels = labels
+        xlabels = labels
 
     # full matrix
     if filename1 is not None:
