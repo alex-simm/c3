@@ -63,20 +63,37 @@ def getDrive(model: Model, qubit: chip.Qubit) -> chip.Drive:
     return connected[0] if len(connected) > 0 else None
 
 
-def splitQubitOccupations(
-    population: np.array, dims: List[int]
-) -> Tuple[np.array, np.array]:
+def getQubitsPopulation(population: np.array, dims: List[int]) -> np.array:
+    """
+    Splits the population of all levels of a system into the populations of levels per subsystem.
+
+    Parameters
+    ----------
+    population: np.array
+        The time dependent population of each energy level. First dimension: level index, second dimension: time.
+    dims: List[int]
+        The number of levels for each subsystem.
+
+    Returns
+    -------
+    np.array
+        The time-dependent population of energy levels for each subsystem. First dimension: subsystem index, second
+        dimension: level index, third dimension: time.
+    """
+    numQubits = len(dims)
+
+    # create a list of all levels
     qubit_levels = []
     for dim in dims:
         qubit_levels.append(list(range(dim)))
     combined_levels = list(itertools.product(*qubit_levels))
 
-    qubit1Population = np.zeros((dims[0], population.shape[1]))
-    qubit2Population = np.zeros((dims[0], population.shape[1]))
+    # calculate populations
+    qubitsPopulations = np.zeros((numQubits, dims[0], population.shape[1]))
     for idx, levels in enumerate(combined_levels):
-        qubit1Population[levels[0]] += population[idx]
-        qubit2Population[levels[1]] += population[idx]
-    return qubit1Population, qubit2Population
+        for i in range(numQubits):
+            qubitsPopulations[i, levels[i]] += population[idx]
+    return qubitsPopulations
 
 
 # ====================== creating models and experiments ======================
@@ -942,7 +959,7 @@ def plotSplittedOccupations(
     dt = experiment.ts[1] - experiment.ts[0]
     ts = np.linspace(0.0, dt * populations.shape[1], populations.shape[1])
     dims = [s.hilbert_dim for s in experiment.pmap.model.subsystems.values()]
-    splitted = splitQubitOccupations(populations, dims)
+    splitted = getQubitsPopulation(populations, dims)
 
     # positions of vertical lines
     gate_steps = [experiment.partial_propagators[g].shape[0] for g in gate_sequence]
