@@ -125,6 +125,12 @@ class TwoQubitsExperiment(DataOutput):
             #    "leakage",
             # ],
         )
+        utils.plotSplittedOccupations(
+            self.__experiment,
+            populations,
+            gate_names,
+            filename=super().createFileName(name + "_splitted", "png"),
+        )
 
     def savePropagator(self, name: str) -> None:
         U = self.__experiment.propagators[self.__gate.get_key()]
@@ -155,7 +161,6 @@ class TwoQubitsExperiment(DataOutput):
         fidelity_params: dict,
         callback: Callable = None,
     ):
-        # optimise
         optimisable_gates = list(filter(lambda g: g.get_key() != "id[]", [self.__gate]))
         gateset_opt_map = utils.createOptimisableParameterMap(
             self.__experiment, optimisable_gates, optimisable_params
