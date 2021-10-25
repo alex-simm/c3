@@ -1,6 +1,7 @@
 from typing import List
 import numpy as np
 from matplotlib import pyplot as plt, colors, cm, figure
+import plotly.graph_objects as go
 
 
 def plotSignal(time, signal, filename=None, spectrum_threshold=1e-4) -> figure.Figure:
@@ -226,3 +227,30 @@ def plotComplexMatrixAbsOrPhase(
         cbar.ax.set_yticklabels(["$-\\pi$", "$\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
 
     return fig
+
+
+def plot_dynamics_plotly(exp, psi_init, seq,filename, goal = -1):
+        model = exp.pmap.model
+        dUs = exp.partial_propagators
+        psi_t = psi_init.numpy()
+        pop_t = exp.populations(psi_t, model.lindbladian)
+        for gate in seq:
+                for du in dUs[gate]:
+                        psi_t = np.matmul(du.numpy(), psi_t)
+                        pops = exp.populations(psi_t, model.lindbladian)
+                        pop_t = np.append(pop_t, pops, axis = 1)
+        
+        ts = exp.ts
+        dt = ts[1] - ts[0]
+        ts = np.linspace(0.0, dt*pop_t.shape[1], pop_t.shape[1])
+
+        legends = model.state_labels
+        fig = go.Figure()
+        for i in range(len(pop_t.T[0])):
+            fig.add_trace(go.Scatter(x = ts/1e-9, y = pop_t.T[:,i], mode = "lines", name = str(legends[i]) ))
+            
+        fig.show()
+        fig.write_html(filename+".html")
+
+        pass
+
