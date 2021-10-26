@@ -755,7 +755,6 @@ def plotSignalWithEnvelope(
     fig, axs = plt.subplots(1, 2, figsize=(12, 5))
     axs[0].set_title("Signal")
     axs[0].plot(time, signal)
-    print("envelope size: ", len(envelope[0]), len(envelope[1]))
     if pwc_times is not None:
         indices = [(np.abs(time - t)).argmin() for t in pwc_times]
         axs[0].plot(envelope[0][indices], envelope[1][indices], "o", color="black")
