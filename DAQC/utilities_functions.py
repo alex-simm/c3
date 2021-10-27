@@ -69,13 +69,13 @@ def CreateQubits(
 
     Returns
     -------
-    qubit_array: List[chip.Transmon]
+    qubits: List[chip.Transmon]
         An list of transmons
     """
 
-    qubit_array = []
+    qubits = []
     for i in range(Num_qubits):
-        qubit_array.append(
+        qubits.append(
             chip.Transmon(
                 name="Q" + str(i + 1),
                 desc="Qubit  " + str(i + 1),
@@ -95,7 +95,7 @@ def CreateQubits(
             )
         )
 
-    return qubit_array
+    return qubits
 
 
 def CreateCouplers(
@@ -149,13 +149,13 @@ def CreateCouplers(
 
     Returns
     -------
-    coupler_array: List[chip.Transmon]
+    couplers: List[chip.Transmon]
         An list of transmons
     """
 
-    coupler_array = []
+    couplers = []
     for i in range(Num_coupler):
-        coupler_array.append(
+        couplers.append(
             chip.Transmon(
                 name="C" + str(i + 1),
                 desc="Coupler  " + str(i + 1),
@@ -176,7 +176,7 @@ def CreateCouplers(
                 d=Qty(value=d_list[i], max_val=0.1, min_val=-0.1, unit=""),
             )
         )
-    return coupler_array
+    return couplers
 
 
 def CreateCouplings(
@@ -184,8 +184,8 @@ def CreateCouplings(
     Num_coupler: int,
     NN_coupling_strength: List[float],
     NNN_coupling_strength: List[float],
-    qubit_array: List[chip.Transmon],
-    coupler_array: List[chip.Transmon],
+    qubits: List[chip.Transmon],
+    couplers: List[chip.Transmon],
 ) -> List[chip.Coupling]:
 
     """
@@ -210,10 +210,10 @@ def CreateCouplings(
     NNN_coupling_strength: List[float]
         List of coupling strength between adjacent Qubits
 
-    qubit_array: List[chip.Transmon]
+    qubits: List[chip.Transmon]
         List of qubits
 
-    coupler_array: List[chip.Transmon]
+    couplers: List[chip.Transmon]
         List of couplers
 
 
@@ -231,17 +231,15 @@ def CreateCouplings(
         qubit_index = int(np.floor((i + 1) / 2))
         g_NN_array.append(
             chip.Coupling(
-                name=qubit_array[qubit_index].name
-                + "-"
-                + coupler_array[coupler_index].name,
+                name=qubits[qubit_index].name + "-" + couplers[coupler_index].name,
                 desc="Coupling",
                 comment="Coupling between "
-                + qubit_array[qubit_index].name
+                + qubits[qubit_index].name
                 + " and "
-                + coupler_array[coupler_index].name,
+                + couplers[coupler_index].name,
                 connected=[
-                    qubit_array[qubit_index].name,
-                    coupler_array[coupler_index].name,
+                    qubits[qubit_index].name,
+                    couplers[coupler_index].name,
                 ],
                 strength=Qty(
                     value=NN_coupling_strength[i],
@@ -256,13 +254,13 @@ def CreateCouplings(
     for i in range(len(NNN_coupling_strength)):
         g_NNN_array.append(
             chip.Coupling(
-                name=qubit_array[i].name + "-" + qubit_array[i + 1].name,
+                name=qubits[i].name + "-" + qubits[i + 1].name,
                 desc="Coupling",
                 comment="Coupling between "
-                + qubit_array[i].name
+                + qubits[i].name
                 + " and "
-                + qubit_array[i + 1].name,
-                connected=[qubit_array[i].name, qubit_array[i + 1].name],
+                + qubits[i + 1].name,
+                connected=[qubits[i].name, qubits[i + 1].name],
                 strength=Qty(
                     value=NNN_coupling_strength[i],
                     min_val=-1 * 1e3,
