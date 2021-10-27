@@ -11,7 +11,6 @@ from c3.generator.generator import Generator as Gnr
 # Building blocks
 import c3.libraries.chip as chip
 import c3.generator.devices as devices
-import c3.libraries.tasks as tasks
 import c3.signal.pulse as pulse
 import c3.signal.gates as gates
 
@@ -19,18 +18,18 @@ import c3.signal.gates as gates
 import c3.libraries.hamiltonians as hamiltonians
 
 
-def intialize_qubits(
-    Num_qubits,
-    qubit_levels_list,
-    freq_list,
-    anharm_list,
-    t1_list,
-    t2star_list,
-    phi_list,
-    phi0_list,
-    d_list,
-    qubit_temp,
-):
+def CreateQubits(
+    Num_qubits: int,
+    qubit_levels_list: List[int],
+    freq_list: List[float],
+    anharm_list: List[float],
+    t1_list: List[float],
+    t2star_list: List[float],
+    phi_list: List[float],
+    phi0_list: List[float],
+    d_list: List[float],
+    qubit_temp: float,
+) -> List[chip.Transmon]:
 
     """
     Creates and returns a list of qubits.
@@ -40,7 +39,7 @@ def intialize_qubits(
     Num_qubits : Int
         Number of qubits in the chip.
 
-    qubit_levels_list: List[Float]
+    qubit_levels_list: List[int]
         List of number of levels in each qubit.
 
     freq_list: List[Float]
@@ -99,18 +98,61 @@ def intialize_qubits(
     return qubit_array
 
 
-def initialize_coupler(
-    Num_coupler,
-    coupler_levels_list,
-    freq_list,
-    anharm_list,
-    t1_list,
-    t2star_list,
-    phi_list,
-    phi0_list,
-    d_list,
-    qubit_temp,
-):
+def CreateCouplers(
+    Num_coupler: int,
+    coupler_levels_list: List[int],
+    freq_list: List[float],
+    anharm_list: List[float],
+    t1_list: List[float],
+    t2star_list: List[float],
+    phi_list: List[float],
+    phi0_list: List[float],
+    d_list: List[float],
+    qubit_temp: float,
+) -> List[chip.Transmon]:
+
+    """
+    Creates and returns a list of couplers.
+
+    Parameters
+    ----------
+    Num_coupler : Int
+        Number of couplers in the chip.
+
+    coupler_levels_list: List[int]
+        List of number of levels in each couplers.
+
+    freq_list: List[Float]
+        List of frequency of each couplers.
+
+    anharm_list: List[Float]
+        List of anharmonicity of each couplers.
+
+    t1_list: List[Float]
+        List of T1 values for each couplers.
+
+    t2star_list: List[Float]
+        List of T2* values for each couplers.
+
+    phi_list: List[Float]
+        List of current flux values for each couplers.
+
+    phi0_list: List[Float]
+        List of flux bias for each couplers.
+
+    d_list: List[Float]
+        List of junction asymmetry values for each couplers.
+
+    qubit_temp: Float
+        Temperature of the couplers.
+
+
+    Returns
+    -------
+    coupler_array: List[chip.Transmon]
+        An list of transmons
+    """
+
     coupler_array = []
     for i in range(Num_coupler):
         coupler_array.append(
@@ -137,16 +179,49 @@ def initialize_coupler(
     return coupler_array
 
 
-def generate_couplings(
-    Num_qubits,
-    Num_coupler,
-    NN_coupling_strength,
-    NNN_coupling_strength,
-    qubit_array,
-    coupler_array,
-):
+def CreateCouplings(
+    Num_qubits: int,
+    Num_coupler: int,
+    NN_coupling_strength: List[float],
+    NNN_coupling_strength: List[float],
+    qubit_array: List[chip.Transmon],
+    coupler_array: List[chip.Transmon],
+) -> List[chip.Coupling]:
 
-    ## For chain architecture of qubits and couplers
+    """
+    Creates and returns a list of Nearest neighbour (NN) couplings
+    and next nearest neighour (NNN) couplings.
+    The NN couplings are between the Qubits and the Couplers
+    The NNN couplings are between the adjacent Qubits.
+    This assumes a linear chain architecture of Qubits
+    and couplers for now.
+
+    Parameters
+    ----------
+    Num_qubits: int
+        Number of qubits on the chip.
+
+    Num_coupler: int
+        Number of couplers on the chip.
+
+    NN_coupling_strength: List[float]
+        List of coupling strength between the Qubits and couplers
+
+    NNN_coupling_strength: List[float]
+        List of coupling strength between adjacent Qubits
+
+    qubit_array: List[chip.Transmon]
+        List of qubits
+
+    coupler_array: List[chip.Transmon]
+        List of couplers
+
+
+    Returns
+    -------
+    List of NN and NNN couplings
+
+    """
 
     g_NN_array = []
     g_NNN_array = []
@@ -229,47 +304,39 @@ def createDrives(qubits: List[chip.PhysicalComponent]) -> List[chip.Drive]:
     return drives
 
 
-def initialize_qubit_drives(Num_qubits, qubit_array):
-    drive_array = []
-    for i in range(Num_qubits):
-        drive_array.append(
-            chip.Drive(
-                name="d" + str(i + 1),
-                desc="Drive " + str(i + 1),
-                comment="Drive line" + str(i + 1) + "on qubit " + str(i + 1),
-                connected=[qubit_array[i].name],
-                hamiltonian_func=hamiltonians.x_drive,
-            )
-        )
+def CreateGenerator(
+    Num_qubits: int,
+    drive_array: List[chip.Drive],
+    sim_res: float,
+    awg_res: float,
+    v2hz: float,
+):
 
-    return drive_array
+    """
+    Creates and returns the Generator
 
+    Parameters
+    ----------
+    Num_qubits: int
+        Number of qubits on the chip
 
-def build_confusion_matrix(Num_qubits, m00_arr, m01_arr, qubit_levels):
-    ## For now this code is written assuming same number of levels for all the qubits
+    drive_array: List[chip.Drive]
+        List of drives on the Qubits
 
-    one_zeros = np.array([0] * qubit_levels)
-    zero_ones = np.array([1] * qubit_levels)
-    one_zeros[0] = 1
-    zero_ones[0] = 0
+    sim_res: float
+        Resolution of the simulation
 
-    confusion_row_arr = []
-    for i in range(Num_qubits):
-        val = one_zeros * m00_arr[i] + zero_ones * m01_arr[i]
+    awg_res: float
+        Resolution of AWG
 
-        min_val = one_zeros * 0.8 + zero_ones * 0.0
-        max_val = one_zeros * 1.0 + zero_ones * 0.2
+    v2hz: float
+        Voltz to Hertz conversion
 
-        confusion_row_arr.append(
-            Qty(value=val, min_val=min_val, max_val=max_val, unit="")
-        )
+    Returns
+    -------
+    Generator
+    """
 
-    conf_matrix = tasks.ConfusionMatrix(confusion_row_arr)
-
-    return conf_matrix
-
-
-def build_generator(Num_qubits, drive_array, sim_res, awg_res, v2hz):
     sim_res = 100e9
     awg_res = 2e9
     chain = {}
@@ -311,7 +378,31 @@ def build_generator(Num_qubits, drive_array, sim_res, awg_res, v2hz):
     return generator
 
 
-def build_carriers(Num_qubits, qubit_freqs, sideband):
+def CreateCarriers(Num_qubits: int, qubit_freqs: List[float], sideband: float):
+
+    """
+    Creates and returns a list of carriers for each qubit.
+
+    Parameters
+    ----------
+    Num_qubits: int
+        Number of qubits on the chip
+
+    qubit_freqs: List[float]
+        List of frequencies of the qubits.
+        For tunable qubits, one can use model.get_qubit_freqs()
+        to find the frequency of the qubits at current flux.
+
+    sideband: float
+        Frequency of the sideband.
+
+    Returns
+    -------
+    List of carriers for each qubit
+
+
+    """
+
     lo_freq_array = [qubit_freqs[i] + sideband for i in range(Num_qubits)]
 
     carrier_array = []
@@ -338,15 +429,49 @@ def build_carriers(Num_qubits, qubit_freqs, sideband):
     return carrier_array
 
 
-def build_single_qubit_XY_gates(
-    Num_qubits,
-    drive_array,
-    carrier_array,
-    t_final,
-    drive_pulse,
-    nodrive_pulse,
-    sideband,
+def CreateSingleQubit_XY_Gates(
+    Num_qubits: int,
+    drive_array: List[chip.Drive],
+    carrier_array: List[pulse.Carrier],
+    t_final: float,
+    drive_pulse: pulse.Envelope,
+    nodrive_pulse: pulse.Envelope,
+    sideband: float,
 ):
+
+    """
+    Create and return a list of single qubit X and Y gates
+    for all the qubits.
+
+    Parameters
+    ----------
+    Num_qubits: int
+        Number of qubits on the chip
+
+    drive_array: List[chip.Drive]
+        List of drive lines for each qubit
+
+    carrier_array: List[pulse.Carrier]
+        list of carrier pulses for each qubit
+
+    t_final: float
+        Final gate time for single qubit rotation gates
+
+    drive_pulse: pulse.Envelope
+        pulse for single qubit rotation gates
+
+    nodrive_pulse: pulse.Envelope
+        pulse for correcting phase
+
+    sideband: float
+        Frequency of sideband
+
+    Returns
+    -------
+    List of Single qubit rotation ( X and Y ) gates for each
+    qubit on the chip
+
+    """
     rx90p_gate_array = []
 
     for i in range(Num_qubits):
