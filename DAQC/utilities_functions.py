@@ -159,9 +159,7 @@ def CreateCouplers(
             chip.Transmon(
                 name="C" + str(i + 1),
                 desc="Coupler  " + str(i + 1),
-                freq=Qty(
-                    value=freq_list[i], min_val=3.995e9, max_val=4.005e9, unit="Hz 2pi"
-                ),
+                freq=Qty(value=freq_list[i], min_val=2e9, max_val=8e9, unit="Hz 2pi"),
                 anhar=Qty(
                     value=anharm_list[i], min_val=-380e6, max_val=-120e6, unit="Hz 2pi"
                 ),
