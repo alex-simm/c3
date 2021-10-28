@@ -239,12 +239,9 @@ def CreateCouplings(
         qubit_index = int(np.floor((i + 1) / 2))
         g_NN_array.append(
             chip.Coupling(
-                name=qubits[qubit_index].name + "-" + couplers[coupler_index].name,
+                name=f"{qubits[qubit_index].name}-{couplers[coupler_index].name}",
                 desc="Coupling",
-                comment="Coupling between "
-                + qubits[qubit_index].name
-                + " and "
-                + couplers[coupler_index].name,
+                comment=f"Coupling between {qubits[qubit_index].name} and {couplers[coupler_index].name}",
                 connected=[
                     qubits[qubit_index].name,
                     couplers[coupler_index].name,
@@ -262,12 +259,9 @@ def CreateCouplings(
     for i in range(len(NNN_coupling_strength)):
         g_NNN_array.append(
             chip.Coupling(
-                name=qubits[i].name + "-" + qubits[i + 1].name,
+                name=f"{qubits[i].name}-{qubits[i + 1].name}",
                 desc="Coupling",
-                comment="Coupling between "
-                + qubits[i].name
-                + " and "
-                + qubits[i + 1].name,
+                comment="Coupling between {qubits[i].name} and {qubits[i + 1].name}",
                 connected=[qubits[i].name, qubits[i + 1].name],
                 strength=Qty(
                     value=NNN_coupling_strength[i],
