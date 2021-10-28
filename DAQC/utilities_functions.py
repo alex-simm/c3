@@ -77,9 +77,14 @@ def CreateQubits(
     for i in range(Num_qubits):
         qubits.append(
             chip.Transmon(
-                name="Q" + str(i + 1),
-                desc="Qubit  " + str(i + 1),
-                freq=Qty(value=freq_list[i], min_val=2e9, max_val=8e9, unit="Hz 2pi"),
+                name=f"Q{i + 1}",
+                desc=f"Qubit {i + 1}",
+                freq=Qty(
+                    value=freq_list[i],
+                    min_val=freq_list[i] - 5e6,
+                    max_val=freq_list[i] + 5e6,
+                    unit="Hz 2pi",
+                ),
                 anhar=Qty(
                     value=anharm_list[i], min_val=-380e6, max_val=-120e6, unit="Hz 2pi"
                 ),
@@ -157,9 +162,14 @@ def CreateCouplers(
     for i in range(Num_coupler):
         couplers.append(
             chip.Transmon(
-                name="C" + str(i + 1),
-                desc="Coupler  " + str(i + 1),
-                freq=Qty(value=freq_list[i], min_val=2e9, max_val=8e9, unit="Hz 2pi"),
+                name=f"C{i + 1}",
+                desc=f"Coupler {i + 1}",
+                freq=Qty(
+                    value=freq_list[i],
+                    min_val=freq_list[i] - 5e6,
+                    max_val=freq_list[i] + 5e6,
+                    unit="Hz 2pi",
+                ),
                 anhar=Qty(
                     value=anharm_list[i], min_val=-380e6, max_val=-120e6, unit="Hz 2pi"
                 ),
