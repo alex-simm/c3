@@ -440,6 +440,8 @@ def CreateSingleQubit_XY_Gates(
     """
     Create and return a list of single qubit X and Y gates
     for all the qubits.
+    This assumes that the qubit and couplers are in a chain
+    to assign the target. This can be changed later.
 
     Parameters
     ----------
@@ -475,7 +477,9 @@ def CreateSingleQubit_XY_Gates(
     for i in range(Num_qubits):
         rx90p_q = gates.Instruction(
             name="rx90p",
-            targets=[i],
+            targets=[
+                2 * i
+            ],  # Here it is assumed that the qubit and couplers are in a chain
             t_start=0.0,
             t_end=t_final,
             channels=[drive_array[i].name, drive_array[(i + 1) % Num_qubits].name],
