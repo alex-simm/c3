@@ -772,8 +772,9 @@ def plotSignalWithEnvelope(
     # cut spectrum if necessary
     if spectrum_cut is not None:
         limits = np.flatnonzero(np.abs(normalised) ** 2 > spectrum_cut)
-        freq = freq[limits[0] : limits[-1]]
-        normalised = normalised[limits[0] : limits[-1]]
+        if len(limits) > 1:
+            freq = freq[limits[0] : limits[-1]]
+            normalised = normalised[limits[0] : limits[-1]]
 
     # plot frequency domain
     axs[1].set_title("Spectrum")
