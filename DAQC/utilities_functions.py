@@ -307,99 +307,67 @@ def createCarriers(qubit_freqs: List[float], sideband: float) -> List[pulse.Carr
     return carrier_array
 
 
-def CreateSingleQubit_XY_Gates(
-    Num_qubits: int,
-    drive_array: List[chip.Drive],
-    carrier_array: List[pulse.Carrier],
+def createSingleQubitGate(
+    name: str,
+    drives: List[chip.Drive],
+    carriers: List[pulse.Carrier],
+    target: int,
     t_final: float,
-    drive_pulse: pulse.Envelope,
-    nodrive_pulse: pulse.Envelope,
+    target_pulse: pulse.Envelope,
+    non_target_pulse: pulse.Envelope,
     sideband: float,
-):
-
+    xy_angle: float = None,
+) -> gates.Instruction:
     """
-    Create and return a list of single qubit X and Y gates
-    for all the qubits.
-    This assumes that the qubit and couplers are in a chain
-    to assign the target. This can be changed later.
+    Creates an instruction that represents a single qubit gate. This applies the target pulse to the target qubit's
+    drive line and the "non-target pulse" to all other qubits.
 
     Parameters
     ----------
-    Num_qubits: int
-        Number of qubits on the chip
-
-    drive_array: List[chip.Drive]
+    name: str
+        Name of the gate
+    drives: List[chip.Drive]
         List of drive lines for each qubit
-
-    carrier_array: List[pulse.Carrier]
+    carriers: List[pulse.Carrier]
         list of carrier pulses for each qubit
-
+    target: int
+        index of the target qubit on which the gate should act
     t_final: float
         Final gate time for single qubit rotation gates
-
-    drive_pulse: pulse.Envelope
+    target_pulse: pulse.Envelope
         pulse for single qubit rotation gates
-
-    nodrive_pulse: pulse.Envelope
+    non_target_pulse: pulse.Envelope
         pulse for correcting phase
-
     sideband: float
         Frequency of sideband
+    xy_angle: float
+        The angle by which the target's drive should be shifted to create a different gate
 
     Returns
     -------
-    List of Single qubit rotation ( X and Y ) gates for each
-    qubit on the chip
-
+    Single qubit rotation gates for one qubit on the chip.
     """
-    rx90p_gate_array = []
-
-    for i in range(Num_qubits):
-        rx90p_q = gates.Instruction(
-            name="rx90p",
-            targets=[
-                2 * i
-            ],  # Here it is assumed that the qubit and couplers are in a chain
-            t_start=0.0,
-            t_end=t_final,
-            channels=[drive_array[i].name, drive_array[(i + 1) % Num_qubits].name],
-        )
-        rx90p_q.add_component(drive_pulse, drive_array[i].name)
-        rx90p_q.add_component(carrier_array[i], drive_array[i].name)
-        rx90p_q.add_component(nodrive_pulse, drive_array[(i + 1) % Num_qubits].name)
-        rx90p_q.add_component(
-            copy.deepcopy(carrier_array[(i + 1) % Num_qubits]),
-            drive_array[(i + 1) % Num_qubits].name,
-        )
-        rx90p_q.comps[drive_array[(i + 1) % Num_qubits].name]["carrier"].params[
-            "framechange"
-        ].set_value((-sideband * t_final) * 2 * np.pi % (2 * np.pi))
-        rx90p_gate_array.append(rx90p_q)
-
-    ry90p_gate_array = []
-    rx90m_gate_array = []
-    ry90m_gate_array = []
-    for i in range(Num_qubits):
-        ry90p_q = copy.deepcopy(rx90p_gate_array[i])
-        ry90p_q.name = "ry90p"
-        rx90m_q = copy.deepcopy(rx90p_gate_array[i])
-        rx90m_q.name = "rx90m"
-        ry90m_q = copy.deepcopy(rx90p_gate_array[i])
-        ry90m_q.name = "ry90m"
-        ry90p_q.comps[drive_array[i].name]["gauss"].params["xy_angle"].set_value(
-            0.5 * np.pi
-        )
-        rx90m_q.comps[drive_array[i].name]["gauss"].params["xy_angle"].set_value(np.pi)
-        ry90m_q.comps[drive_array[i].name]["gauss"].params["xy_angle"].set_value(
-            1.5 * np.pi
-        )
-
-        ry90p_gate_array.append(ry90p_q)
-        ry90m_gate_array.append(ry90m_q)
-        rx90m_gate_array.append(rx90m_q)
-
-    single_qubit_gates = (
-        rx90p_gate_array + rx90m_gate_array + ry90p_gate_array + ry90m_gate_array
+    gate = gates.Instruction(
+        name=name,
+        targets=[target],
+        t_start=0.0,
+        t_end=t_final,
+        channels=[d.name for d in drives],
     )
+    for i in range(len(drives)):
+        if i == target:
+            gate.add_component(target_pulse, drives[i].name)
+            gate.add_component(carriers[i], drives[i].name)
+            if xy_angle is not None:
+                gate.comps[drives[i].name][target_pulse.name].params[
+                    "xy_angle"
+                ].set_value(xy_angle)
+        else:
+            carrier = copy.deepcopy(carriers[i])
+            carrier.params["framechange"].set_value(
+                (-sideband * t_final) * 2 * np.pi % (2 * np.pi)
+            )
+            gate.add_component(non_target_pulse, drives[i].name)
+            gate.add_component(carrier, drives[i].name)
 
-    return single_qubit_gates
+    return gate
