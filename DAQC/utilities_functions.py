@@ -305,11 +305,9 @@ def createDrives(qubits: List[chip.PhysicalComponent]) -> List[chip.Drive]:
 
 
 def CreateGenerator(
-    Num_qubits: int,
     drive_array: List[chip.Drive],
-    sim_res: float,
-    awg_res: float,
-    v2hz: float,
+    sim_res: float = 100e9,
+    awg_res: float = 2e9,
 ):
 
     """
@@ -319,36 +317,19 @@ def CreateGenerator(
     ----------
     Num_qubits: int
         Number of qubits on the chip
-
     drive_array: List[chip.Drive]
         List of drives on the Qubits
-
     sim_res: float
         Resolution of the simulation
-
     awg_res: float
         Resolution of AWG
-
-    v2hz: float
-        Voltz to Hertz conversion
 
     Returns
     -------
     Generator
     """
-
-    sim_res = 100e9
-    awg_res = 2e9
-    chain = {}
-    for i in range(Num_qubits):
-        chain[drive_array[i].name] = [
-            "LO",
-            "AWG",
-            "DigitalToAnalog",
-            "Response",
-            "Mixer",
-            "VoltsToHertz",
-        ]
+    chain = ["LO", "AWG", "DigitalToAnalog", "Response", "Mixer", "VoltsToHertz"]
+    chains = {f"{d.name}": chain for d in drive_array}
 
     generator = Gnr(
         devices={
@@ -367,12 +348,12 @@ def CreateGenerator(
             "Mixer": devices.Mixer(name="mixer", inputs=2, outputs=1),
             "VoltsToHertz": devices.VoltsToHertz(
                 name="V_to_Hz",
-                V_to_Hz=Qty(value=v2hz, min_val=0.9e9, max_val=1.1e9, unit="Hz/V"),
+                V_to_Hz=Qty(value=1e9, min_val=0.9e9, max_val=1.1e9, unit="Hz/V"),
                 inputs=1,
                 outputs=1,
             ),
         },
-        chains=chain,
+        chains=chains,
     )
 
     return generator
