@@ -89,54 +89,81 @@ def createQubits(
     return qubits
 
 
-def CreateCouplings(
-    Num_qubits: int,
-    Num_coupler: int,
-    NN_coupling_strength: List[float],
-    NNN_coupling_strength: List[float],
+def createChainCouplings(
+    coupling_strength: List[float],
     qubits: List[chip.Transmon],
-    couplers: List[chip.Transmon],
 ) -> List[chip.Coupling]:
-
     """
-    Creates and returns a list of Nearest neighbour (NN) couplings
-    and next nearest neighour (NNN) couplings.
-    The NN couplings are between the Qubits and the Couplers
-    The NNN couplings are between the adjacent Qubits.
-    This assumes a linear chain architecture of Qubits
-    and couplers for now.
+    Creates nearest neighbour couplings between the qubits in 1D chain. This directly couples the qubits without
+    intermediate couplers and assumes a linear chain architecture of qubits.
 
     Parameters
     ----------
-    Num_qubits: int
-        Number of qubits on the chip.
-
-    Num_coupler: int
-        Number of couplers on the chip.
-
-    NN_coupling_strength: List[float]
-        List of coupling strength between the Qubits and couplers
-
-    NNN_coupling_strength: List[float]
-        List of coupling strength between adjacent Qubits
-
+    coupling_strength: List[float]
+        List of coupling strength between adjacent Qubits. For n qubits, this needs to be a list of n-1 values.
     qubits: List[chip.Transmon]
         List of qubits
 
-    couplers: List[chip.Transmon]
-        List of couplers
+    Returns
+    -------
+    List of couplings
+    """
+    if len(coupling_strength) < len(qubits) - 1:
+        raise Exception("not enough coupling constants")
 
+    couplings = []
+
+    for i in range(len(qubits) - 1):
+        couplings.append(
+            chip.Coupling(
+                name=f"{qubits[i].name}-{qubits[i + 1].name}",
+                desc="Coupling",
+                comment=f"Coupling between {qubits[i].name} and {qubits[i + 1].name}",
+                connected=[qubits[i].name, qubits[i + 1].name],
+                strength=Qty(
+                    value=coupling_strength[i],
+                    min_val=-1 * 1e3,
+                    max_val=200e6,
+                    unit="Hz 2pi",
+                ),
+                hamiltonian_func=hamiltonians.int_XX,
+            )
+        )
+
+    return couplings
+
+
+def createChainCouplingsWithCouplers(
+    coupling_strength: List[float],
+    qubits: List[chip.Transmon],
+    couplers: List[chip.Transmon],
+) -> List[chip.Coupling]:
+    """
+    Creates and returns a list of Nearest neighbour (NN) couplings where each pair of qubits is coupled via a coupler.
+    This assumes a linear chain architecture of Qubits and couplers.
+
+    Parameters
+    ----------
+    coupling_strength: List[float]
+        List of coupling strength between the Qubits and couplers. For n qubits, this list needs to contain 2(n-1)
+        values, two for each coupler.
+    qubits: List[chip.Transmon]
+        List of qubits
+    couplers: List[chip.Transmon]
+        List of couplers. For n qubits, this list needs to contain n-1 couplers.
 
     Returns
     -------
-    List of NN and NNN couplings
-
+    List of couplings
     """
+    if len(couplers) < len(qubits) - 1:
+        raise Exception("not enough couplers")
+    if len(coupling_strength) < 2 * len(couplers):
+        raise Exception("not enough coupling constants")
 
     g_NN_array = []
-    g_NNN_array = []
 
-    for i in range(Num_coupler + Num_qubits - 1):
+    for i in range(2 * len(couplers)):
         coupler_index = int(np.floor(i / 2))
         qubit_index = int(np.floor((i + 1) / 2))
         g_NN_array.append(
@@ -149,7 +176,7 @@ def CreateCouplings(
                     couplers[coupler_index].name,
                 ],
                 strength=Qty(
-                    value=NN_coupling_strength[i],
+                    value=coupling_strength[i],
                     min_val=-1 * 1e3,
                     max_val=200e6,
                     unit="Hz 2pi",
@@ -158,24 +185,7 @@ def CreateCouplings(
             )
         )
 
-    for i in range(len(NNN_coupling_strength)):
-        g_NNN_array.append(
-            chip.Coupling(
-                name=f"{qubits[i].name}-{qubits[i + 1].name}",
-                desc="Coupling",
-                comment="Coupling between {qubits[i].name} and {qubits[i + 1].name}",
-                connected=[qubits[i].name, qubits[i + 1].name],
-                strength=Qty(
-                    value=NNN_coupling_strength[i],
-                    min_val=-1 * 1e3,
-                    max_val=200e6,
-                    unit="Hz 2pi",
-                ),
-                hamiltonian_func=hamiltonians.int_XX,
-            )
-        )
-
-    return g_NN_array + g_NNN_array
+    return g_NN_array
 
 
 def createDrives(qubits: List[chip.PhysicalComponent]) -> List[chip.Drive]:
