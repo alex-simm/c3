@@ -18,8 +18,7 @@ import c3.signal.gates as gates
 import c3.libraries.hamiltonians as hamiltonians
 
 
-def CreateQubits(
-    Num_qubits: int,
+def createQubits(
     qubit_levels_list: List[int],
     freq_list: List[float],
     anharm_list: List[float],
@@ -30,42 +29,29 @@ def CreateQubits(
     d_list: List[float],
     qubit_temp: float,
 ) -> List[chip.Transmon]:
-
     """
     Creates and returns a list of qubits.
 
     Parameters
     ----------
-    Num_qubits : Int
-        Number of qubits in the chip.
-
     qubit_levels_list: List[int]
         List of number of levels in each qubit.
-
     freq_list: List[Float]
         List of frequency of each qubit.
-
     anharm_list: List[Float]
         List of anharmonicity of each qubit.
-
     t1_list: List[Float]
         List of T1 values for each qubit.
-
     t2star_list: List[Float]
         List of T2* values for each qubit.
-
     phi_list: List[Float]
         List of current flux values for each qubit.
-
     phi0_list: List[Float]
         List of flux bias for each qubit.
-
     d_list: List[Float]
         List of junction asymmetry values for each qubit.
-
     qubit_temp: Float
         Temperature of the qubits
-
 
     Returns
     -------
@@ -74,7 +60,7 @@ def CreateQubits(
     """
 
     qubits = []
-    for i in range(Num_qubits):
+    for i in range(len(qubit_levels_list)):
         qubits.append(
             chip.Transmon(
                 name=f"Q{i + 1}",
