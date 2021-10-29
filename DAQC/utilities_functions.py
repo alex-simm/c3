@@ -356,8 +356,8 @@ def createSingleQubitGate(
     )
     for i in range(len(drives)):
         if i == target:
-            gate.add_component(target_pulse, drives[i].name)
-            gate.add_component(carriers[i], drives[i].name)
+            gate.add_component(copy.deepcopy(target_pulse), drives[i].name)
+            gate.add_component(copy.deepcopy(carriers[i]), drives[i].name)
             if xy_angle is not None:
                 gate.comps[drives[i].name][target_pulse.name].params[
                     "xy_angle"
@@ -367,7 +367,7 @@ def createSingleQubitGate(
             carrier.params["framechange"].set_value(
                 (-sideband * t_final) * 2 * np.pi % (2 * np.pi)
             )
-            gate.add_component(non_target_pulse, drives[i].name)
+            gate.add_component(copy.deepcopy(non_target_pulse), drives[i].name)
             gate.add_component(carrier, drives[i].name)
 
     return gate
@@ -423,13 +423,13 @@ def createTwoQubitsGate(
     for i in range(len(drives)):
         if i in targets:
             gate.add_component(copy.deepcopy(target_pulse), drives[i].name)
-            gate.add_component(carriers[i], drives[i].name)
+            gate.add_component(copy.deepcopy(carriers[i]), drives[i].name)
         else:
             carrier = copy.deepcopy(carriers[i])
             carrier.params["framechange"].set_value(
                 (-sideband * t_final) * 2 * np.pi % (2 * np.pi)
             )
-            gate.add_component(non_target_pulse, drives[i].name)
+            gate.add_component(copy.deepcopy(non_target_pulse), drives[i].name)
             gate.add_component(carrier, drives[i].name)
 
     return gate
