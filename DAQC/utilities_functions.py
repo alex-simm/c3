@@ -371,3 +371,65 @@ def createSingleQubitGate(
             gate.add_component(carrier, drives[i].name)
 
     return gate
+
+
+def createTwoQubitsGate(
+    name: str,
+    drives: List[chip.Drive],
+    carriers: List[pulse.Carrier],
+    targets: List[int],
+    t_final: float,
+    target_pulse: pulse.Envelope,
+    non_target_pulse: pulse.Envelope,
+    sideband: float,
+) -> gates.Instruction:
+    """
+    Creates a gate that acts on a list of qubits. This applies a copy of the target pulse to all the target qubit's
+    drive lines and the "non-target pulse" to all other qubits.
+
+    Parameters
+    ----------
+    name: str
+        Name of the gate
+    drives: List[chip.Drive]
+        List of drive lines for each qubit
+    carriers: List[pulse.Carrier]
+        list of carrier pulses for each qubit
+    targets: List[int]
+        indices of the target qubits on which the gate should act
+    t_final: float
+        Final gate time for single qubit rotation gates
+    target_pulse: pulse.Envelope
+        pulse for single qubit rotation gates
+    non_target_pulse: pulse.Envelope
+        pulse for correcting phase
+    sideband: float
+        Frequency of sideband
+    xy_angle: float
+        The angle by which the target's drive should be shifted to create a different gate
+
+    Returns
+    -------
+    Single qubit rotation gates for one qubit on the chip.
+    """
+    gate = gates.Instruction(
+        name=name,
+        targets=targets,
+        t_start=0.0,
+        t_end=t_final,
+        channels=[d.name for d in drives],
+    )
+
+    for i in range(len(drives)):
+        if i in targets:
+            gate.add_component(copy.deepcopy(target_pulse), drives[i].name)
+            gate.add_component(carriers[i], drives[i].name)
+        else:
+            carrier = copy.deepcopy(carriers[i])
+            carrier.params["framechange"].set_value(
+                (-sideband * t_final) * 2 * np.pi % (2 * np.pi)
+            )
+            gate.add_component(non_target_pulse, drives[i].name)
+            gate.add_component(carrier, drives[i].name)
+
+    return gate
