@@ -188,7 +188,7 @@ def createChainCouplingsWithCouplers(
     return g_NN_array
 
 
-def createDrives(qubits: List[chip.PhysicalComponent]) -> List[chip.Drive]:
+def createDrives(qubits: List[chip.Transmon]) -> List[chip.Drive]:
     """
     Creates and returns a drive line for each qubit in the list.
 
@@ -216,20 +216,17 @@ def createDrives(qubits: List[chip.PhysicalComponent]) -> List[chip.Drive]:
     return drives
 
 
-def CreateGenerator(
-    drive_array: List[chip.Drive],
+def createGenerator(
+    drives: List[chip.Drive],
     sim_res: float = 100e9,
     awg_res: float = 2e9,
 ):
-
     """
-    Creates and returns the Generator
+    Creates and returns the generator.
 
     Parameters
     ----------
-    Num_qubits: int
-        Number of qubits on the chip
-    drive_array: List[chip.Drive]
+    drives: List[chip.Drive]
         List of drives on the Qubits
     sim_res: float
         Resolution of the simulation
@@ -241,7 +238,7 @@ def CreateGenerator(
     Generator
     """
     chain = ["LO", "AWG", "DigitalToAnalog", "Response", "Mixer", "VoltsToHertz"]
-    chains = {f"{d.name}": chain for d in drive_array}
+    chains = {f"{d.name}": chain for d in drives}
 
     generator = Gnr(
         devices={
