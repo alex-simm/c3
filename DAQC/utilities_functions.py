@@ -268,46 +268,34 @@ def createGenerator(
     return generator
 
 
-def CreateCarriers(Num_qubits: int, qubit_freqs: List[float], sideband: float):
-
+def createCarriers(qubit_freqs: List[float], sideband: float) -> List[pulse.Carrier]:
     """
-    Creates and returns a list of carriers for each qubit.
+    Creates and returns a carrier for each qubit.
 
     Parameters
     ----------
-    Num_qubits: int
-        Number of qubits on the chip
-
     qubit_freqs: List[float]
         List of frequencies of the qubits.
         For tunable qubits, one can use model.get_qubit_freqs()
         to find the frequency of the qubits at current flux.
-
     sideband: float
         Frequency of the sideband.
 
     Returns
     -------
     List of carriers for each qubit
-
-
     """
-
-    lo_freq_array = [qubit_freqs[i] + sideband for i in range(Num_qubits)]
-
     carrier_array = []
 
-    for i in range(Num_qubits):
-
+    for i in range(len(qubit_freqs)):
         carrier_parameters = {
             "freq": Qty(
-                value=lo_freq_array[i], min_val=1e9, max_val=8e9, unit="Hz 2pi"
+                value=qubit_freqs[i] + sideband, min_val=1e9, max_val=8e9, unit="Hz 2pi"
             ),
             "framechange": Qty(
                 value=0.0, min_val=-np.pi, max_val=3 * np.pi, unit="rad"
             ),
         }
-
         carrier_array.append(
             pulse.Carrier(
                 name="carrier",
