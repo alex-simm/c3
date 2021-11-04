@@ -1,3 +1,4 @@
+import itertools
 from typing import List
 
 import numpy as np
@@ -433,3 +434,34 @@ def createTwoQubitsGate(
             gate.add_component(carrier, drives[i].name)
 
     return gate
+
+
+def getQubitsPopulation(population: np.array, dims: List[int]) -> np.array:
+    """
+    Splits the population of all levels of a system into the populations of levels per subsystem.
+    Parameters
+    ----------
+    population: np.array
+        The time dependent population of each energy level. First dimension: level index, second dimension: time.
+    dims: List[int]
+        The number of levels for each subsystem.
+    Returns
+    -------
+    np.array
+        The time-dependent population of energy levels for each subsystem. First dimension: subsystem index, second
+        dimension: level index, third dimension: time.
+    """
+    numQubits = len(dims)
+
+    # create a list of all levels
+    qubit_levels = []
+    for dim in dims:
+        qubit_levels.append(list(range(dim)))
+    combined_levels = list(itertools.product(*qubit_levels))
+
+    # calculate populations
+    qubitsPopulations = np.zeros((numQubits, dims[0], population.shape[1]))
+    for idx, levels in enumerate(combined_levels):
+        for i in range(numQubits):
+            qubitsPopulations[i, levels[i]] += population[idx]
+    return qubitsPopulations
