@@ -1,6 +1,6 @@
 from typing import List
 import numpy as np
-from matplotlib import pyplot as plt, colors, cm, figure
+from matplotlib import pyplot as plt, colors, cm
 import plotly.graph_objects as go
 
 from DAQC.utilities_functions import getQubitsPopulation
@@ -8,7 +8,7 @@ from c3.experiment import Experiment
 import tensorflow as tf
 
 
-def plotSignal(time, signal, filename=None) -> figure.Figure:
+def plotSignal(time, signal, filename=None):
     """
     Plots a time dependent drive signal.
 
@@ -21,10 +21,6 @@ def plotSignal(time, signal, filename=None) -> figure.Figure:
     filename: str
         Optional name of the file to which the plot will be saved. If none,
         it will only be shown.
-
-    Returns
-    -------
-    figure.Figure The figure in which the plot was created.
     """
     time = time.flatten()
     signal = signal.flatten()
@@ -40,15 +36,13 @@ def plotSignal(time, signal, filename=None) -> figure.Figure:
     plt.show()
     plt.close()
 
-    return fig
-
 
 def plotSignalSpectrum(
     time: np.array,
     signal: np.array,
     spectrum_threshold: float = 1e-4,
     filename: str = None,
-) -> figure.Figure:
+):
     """
     Plots the normalised frequency spectrum of a time-dependent signal.
 
@@ -64,15 +58,11 @@ def plotSignalSpectrum(
     filename: str
         Optional name of the file to which the plot will be saved. If none,
         it will only be shown.
-
-    Returns
-    -------
-
     """
     # plot time domain
     time = time.flatten()
     signal = signal.flatten()
-    fig = plt.figure()
+    plt.figure()
 
     # calculate frequency spectrum
     freq_signal = np.fft.rfft(signal)
@@ -102,8 +92,6 @@ def plotSignalSpectrum(
     plt.show()
     plt.close()
 
-    return fig
-
 
 def plotComplexMatrix(
     M: np.array,
@@ -111,7 +99,7 @@ def plotComplexMatrix(
     xlabels: List[str] = None,
     ylabels: List[str] = None,
     filename: str = None,
-) -> figure.Figure:
+):
     """
     Plots a complex matrix as a 3d bar plot, where the radius is the bar height and the phase defines
     the bar colour.
@@ -129,11 +117,6 @@ def plotComplexMatrix(
     filename: str
         Optional name of the file to which the plot will be saved. If none,
         it will only be shown.
-
-    Returns
-    -------
-    matplotlib.figure.Figure
-      the figure in which the plot was created
     """
     z1 = np.absolute(M)
     z2 = np.angle(M)
@@ -200,8 +183,6 @@ def plotComplexMatrix(
     plt.show()
     plt.close()
 
-    return fig
-
 
 def plotComplexMatrixAbsOrPhase(
     M: np.array,
@@ -229,11 +210,6 @@ def plotComplexMatrixAbsOrPhase(
     filename: str
         Optional name of the file to which the plot will be saved. If none,
         it will only be shown.
-
-    Returns
-    -------
-    matplotlib.figure.Figure
-      the figure in which the plot was created
     """
     data = np.angle(M) if phase else np.abs(M)
 
@@ -288,8 +264,6 @@ def plotComplexMatrixAbsOrPhase(
         plt.savefig(filename, bbox_inches="tight", dpi=100)
     plt.show()
     plt.close()
-
-    return fig
 
 
 def calculatePopulation(
