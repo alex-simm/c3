@@ -221,7 +221,7 @@ def createGenerator(
     drives: List[chip.Drive],
     sim_res: float = 100e9,
     awg_res: float = 2e9,
-):
+) -> Gnr:
     """
     Creates and returns the generator.
 
