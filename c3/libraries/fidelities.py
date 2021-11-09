@@ -84,7 +84,14 @@ def open_system_deco(func):
 @fid_reg_deco
 @state_deco
 def state_transfer_infid_set(
-    propagators: dict, instructions: dict, index, dims, psi_0, n_eval=-1, proj=True
+    propagators: dict,
+    instructions: dict,
+    index,
+    dims,
+    psi_0,
+    n_eval=-1,
+    proj=True,
+    active_levels=2,
 ):
     """
     Mean state transfer infidelity.
@@ -109,15 +116,19 @@ def state_transfer_infid_set(
     """
     infids = []
     for gate, propagator in propagators.items():
-        perfect_gate = instructions[gate].get_ideal_gate(dims)
-        infid = state_transfer_infid(perfect_gate, propagator, index, dims, psi_0)
+        perfect_gate = instructions[gate].get_ideal_gate(
+            dims, active_levels=active_levels
+        )
+        infid = state_transfer_infid(
+            perfect_gate, propagator, index, dims, psi_0, active_levels
+        )
         infids.append(infid)
     return tf.reduce_mean(infids)
 
 
 @fid_reg_deco
 @state_deco
-def state_transfer_infid(ideal: np.ndarray, actual: tf.constant, index, dims, psi_0):
+def state_transfer_infid(ideal: np.ndarray, actual: tf.constant, index, dims, psi_0, active_levels=2):
     """
     Single gate state transfer infidelity. The dimensions of psi_0 and ideal need to be
     compatible and index and dims need to project actual to these same dimensions.
@@ -141,7 +152,9 @@ def state_transfer_infid(ideal: np.ndarray, actual: tf.constant, index, dims, ps
         State infidelity for the selected gate
 
     """
-    actual_comp = tf_project_to_comp(actual, dims=dims, index=index)
+    actual_comp = tf_project_to_comp(
+        actual, dims=dims, index=index, outdims=[active_levels] * len(dims)
+    )
     psi_ideal = tf.matmul(ideal, psi_0)
     psi_actual = tf.matmul(actual_comp, psi_0)
     overlap = tf_ketket_fid(psi_ideal, psi_actual)
@@ -152,7 +165,11 @@ def state_transfer_infid(ideal: np.ndarray, actual: tf.constant, index, dims, ps
 @fid_reg_deco
 @unitary_deco
 def unitary_infid(
-    ideal: np.ndarray, actual: tf.Tensor, index: List[int] = None, dims=None
+    ideal: np.ndarray,
+    actual: tf.Tensor,
+    index: List[int] = None,
+    dims: List[int] = None,
+    active_levels=2,
 ) -> tf.Tensor:
     """
     Unitary overlap between ideal and actually performed gate.
@@ -167,7 +184,7 @@ def unitary_infid(
         Index of the qubit(s) in the Hilbert space to be evaluated
     gate : str
         One of the keys of propagators, selects the gate to be evaluated
-    dims : list
+    dims : List[int]
         List of dimensions of qubits
 
     Returns
@@ -177,16 +194,18 @@ def unitary_infid(
     """
     if index is None:
         index = list(range(len(dims)))
-    actual_comp = tf_project_to_comp(actual, dims=dims, index=index)
-    fid_lvls = 2 ** len(index)
-    infid = 1 - tf_unitary_overlap(actual_comp, ideal, lvls=fid_lvls)
+    actual_comp = tf_project_to_comp(
+        actual, dims=dims, index=index, outdims=[active_levels] * len(dims)
+    )
+    fid_lvls = active_levels ** len(index)
+    infid = 1 - tf_unitary_overlap(actual_comp, ideal, lvls=tf.constant(fid_lvls))
     return infid
 
 
 @fid_reg_deco
 @unitary_deco
 @set_deco
-def unitary_infid_set(propagators: dict, instructions: dict, index, dims, n_eval=-1):
+def unitary_infid_set(propagators: dict, instructions: dict, index, dims, active_levels=2, n_eval=-1):
     """
     Mean unitary overlap between ideal and actually performed gate for the gates in
     propagators.
@@ -212,8 +231,65 @@ def unitary_infid_set(propagators: dict, instructions: dict, index, dims, n_eval
     """
     infids = []
     for gate, propagator in propagators.items():
-        perfect_gate = instructions[gate].get_ideal_gate(dims, index)
-        infid = unitary_infid(perfect_gate, propagator, index, dims)
+        perfect_gate = instructions[gate].get_ideal_gate(
+            dims, index, active_levels=active_levels
+        )
+        infid = unitary_infid(
+            perfect_gate, propagator, index, dims, active_levels=active_levels
+        )
+        infids.append(infid)
+    return tf.reduce_mean(infids)
+
+
+@fid_reg_deco
+def unitary_infid_set_with_penalty(
+    propagators: dict,
+    instructions: dict,
+    index,
+    dims,
+    active_levels=2,
+    n_eval=-1,
+    penalty_factor=0.05,
+    penalty_threshold=0.3,
+):
+    """
+    Mean unitary overlap between ideal and actually performed gate for the gates in
+    propagators.
+
+    Parameters
+    ----------
+    propagators : dict
+        Contains actual unitary representations of the gates, resulting from physical
+        simulation
+    instructions : dict
+        Contains the perfect unitary representations of the gates, identified by a key.
+    index : List[int]
+        Index of the qubit(s) in the Hilbert space to be evaluated
+    dims : list
+        List of dimensions of qubits
+    n_eval : int
+        Number of evaluation
+
+    Returns
+    -------
+    tf.float
+        Unitary fidelity.
+    """
+    infids = []
+    for gate, propagator in propagators.items():
+        perfect_gate = instructions[gate].get_ideal_gate(
+            dims, index, active_levels=active_levels
+        )
+        infid = unitary_infid(
+            perfect_gate, propagator, index, dims, active_levels=active_levels
+        )
+        absVals = tf.math.abs(propagator)
+        selected = tf.gather_nd(absVals, tf.where(absVals < penalty_threshold))
+        infid += (
+            penalty_factor
+            * tf.reduce_sum(selected)
+            / tf.cast(tf.size(propagator), tf.float64)
+        )
         infids.append(infid)
     return tf.reduce_mean(infids)
 
