@@ -24,10 +24,10 @@ def plotSignal(time, signal, filename=None):
     """
     time = time.flatten()
     signal = signal.flatten()
-    fig, ax = plt.subplots(1, 1, figsize=(12, 5))
-    ax.plot(time, signal)
-    ax.set_xlabel("Time")
-    ax.set_xlabel("Signal")
+    plt.figure()
+    plt.plot(time, signal)
+    plt.xlabel("Time")
+    plt.ylabel("Signal")
 
     # show and save
     plt.tight_layout()
@@ -59,7 +59,6 @@ def plotSignalSpectrum(
         Optional name of the file to which the plot will be saved. If none,
         it will only be shown.
     """
-    # plot time domain
     time = time.flatten()
     signal = signal.flatten()
     plt.figure()
@@ -84,6 +83,63 @@ def plotSignalSpectrum(
     plt.plot(freq, np.abs(normalised) ** 2, label="Square")
     plt.xlabel("frequency")
     plt.legend()
+
+    # show and save
+    plt.tight_layout()
+    if filename:
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
+    plt.show()
+    plt.close()
+
+
+def plotSignalAndSpectrum(
+    time, signal, spectrum_threshold: float = 1e-4, filename=None
+):
+    """
+    Plots a time dependent drive signal and its frequency spectrum.
+
+    Parameters
+    ----------
+    time
+        timestamps
+    signal
+        the function values
+    spectrum_threshold: float
+        If not None, only the part of the normalised spectrum whose absolute square
+        is larger than this value will be plotted.
+    filename: str
+        Optional name of the file to which the plot will be saved. If none,
+        it will only be shown.
+    """
+    time = time.flatten()
+    signal = signal.flatten()
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+
+    # time domain
+    ax[0].plot(time, signal)
+    ax[0].set_xlabel("Time")
+    ax[0].set_xlabel("Signal")
+
+    # calculate frequency spectrum
+    freq_signal = np.fft.rfft(signal)
+    if np.abs(np.max(freq_signal)) > 1e-14:
+        normalised = freq_signal / np.max(freq_signal)
+    else:
+        normalised = freq_signal
+    freq = np.fft.rfftfreq(len(time), time[-1] / len(time))
+
+    # cut spectrum if necessary
+    if spectrum_threshold is not None:
+        limits = np.flatnonzero(np.abs(normalised) ** 2 > spectrum_threshold)
+        freq = freq[limits[0] : limits[-1]]
+        normalised = normalised[limits[0] : limits[-1]]
+
+    # plot frequency domain
+    ax[1].plot(freq, normalised.real, label="Re")
+    ax[1].plot(freq, normalised.imag, label="Im")
+    ax[1].plot(freq, np.abs(normalised) ** 2, label="Square")
+    ax[1].set_xlabel("frequency")
+    ax[1].legend()
 
     # show and save
     plt.tight_layout()
