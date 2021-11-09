@@ -16,6 +16,9 @@ class DataOutput:
         output_dir.mkdir(parents=True, exist_ok=True)
         self.__directory = directory
 
+    def getDirectory(self):
+        return self.__directory
+
     def createFileName(self, name: str, extension=None):
         s = self.__directory + "/"
         if self.__file_prefix is not None and len(self.__file_prefix) > 0:
