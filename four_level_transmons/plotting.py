@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import numpy as np
 from matplotlib import pyplot as plt, colors, cm
 import plotly.graph_objects as go
@@ -154,6 +154,7 @@ def plotComplexMatrix(
     colourMap: str = "nipy_spectral",
     xlabels: List[str] = None,
     ylabels: List[str] = None,
+    zlimits: Tuple[int, int] = (0, 1),
     filename: str = None,
 ):
     """
@@ -170,6 +171,8 @@ def plotComplexMatrix(
       labels for the x-axis
     ylabels : List[str]
       labels for the y-axis
+    zlimits : Tuple[int, int]
+      Limit for the z-axis. If none, the limits will be set automatically.
     filename: str
         Optional name of the file to which the plot will be saved. If none,
         it will only be shown.
@@ -220,6 +223,8 @@ def plotComplexMatrix(
         axis.w_yaxis.set_ticklabels(
             ylabels, fontsize=13 - 2 * (len(ylabels) / 8), rotation=-65
         )
+    if zlimits is not None:
+        axis.set_zlim(zlimits[0], zlimits[1])
 
     # colour bar
     norm = colors.Normalize(vmin=-np.pi, vmax=np.pi)
@@ -376,7 +381,7 @@ def plotPopulation(
             )
         fig.update_layout(xaxis_title=labelX, yaxis_title=labelY)
     else:
-        fig, axs = plt.subplots(1, 1, figsize=[10, 5])
+        fig, axs = plt.subplots(1, 1, figsize=[8, 5])
         axs.plot(ts / 1e-9, population.T)
 
         # set plot properties
