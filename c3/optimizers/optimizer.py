@@ -55,6 +55,7 @@ class Optimizer:
         self.logger = []
         if logger is not None:
             self.logger = logger
+        self.callback: Callable = None
 
     def set_algorithm(self, algorithm: Optional[Callable]) -> None:
         if algorithm:
@@ -309,6 +310,9 @@ class Optimizer:
         self.optim_status["goal"] = last_goal
         self.log_parameters(current_params)
         return goal
+
+    def set_callback(self, callback: Callable):
+        self.callback = callback
 
 
 class BaseLogger:
