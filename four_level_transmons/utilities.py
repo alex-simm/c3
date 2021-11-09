@@ -1,25 +1,79 @@
 import itertools
-from typing import List
-
+from typing import List, Tuple
 import numpy as np
+import tensorflow as tf
 import copy
-
-# Main C3 objects
 from c3.c3objs import Quantity as Qty
+from c3.experiment import Experiment
 from c3.generator.generator import Generator as Gnr
-
-
-# Building blocks
 import c3.libraries.chip as chip
 import c3.generator.devices as devices
 import c3.signal.pulse as pulse
 import c3.signal.gates as gates
-
-# Libs and helpers
 import c3.libraries.hamiltonians as hamiltonians
+from scipy.signal import find_peaks
 
 
 def createQubits(
+    qubit_levels_list: List[int],
+    freq_list: List[float],
+    anharm_list: List[float],
+    t1_list: List[float],
+    t2star_list: List[float],
+    qubit_temp: float,
+) -> List[chip.Qubit]:
+    """
+    Creates and returns a list of qubits.
+
+    Parameters
+    ----------
+    qubit_levels_list: List[int]
+        List of number of levels in each qubit.
+    freq_list: List[Float]
+        List of frequency of each qubit.
+    anharm_list: List[Float]
+        List of anharmonicity of each qubit.
+    t1_list: List[Float]
+        List of T1 values for each qubit.
+    t2star_list: List[Float]
+        List of T2* values for each qubit.
+    qubit_temp: Float
+        Temperature of the qubits
+
+    Returns
+    -------
+    qubits: List[chip.Transmon]
+        An list of transmons
+    """
+
+    qubits = []
+    for i in range(len(qubit_levels_list)):
+        qubits.append(
+            chip.Qubit(
+                name=f"Q{i + 1}",
+                desc=f"Qubit {i + 1}",
+                freq=Qty(
+                    value=freq_list[i],
+                    min_val=freq_list[i] - 5e6,
+                    max_val=freq_list[i] + 5e6,
+                    unit="Hz 2pi",
+                ),
+                anhar=Qty(
+                    value=anharm_list[i], min_val=-380e6, max_val=-120e6, unit="Hz 2pi"
+                ),
+                hilbert_dim=qubit_levels_list[i],
+                t1=Qty(value=t1_list[i], min_val=1e-6, max_val=90e-6, unit="s"),
+                t2star=Qty(
+                    value=t2star_list[i], min_val=10e-6, max_val=90e-6, unit="s"
+                ),
+                temp=Qty(value=qubit_temp, min_val=0.0, max_val=0.12, unit="K"),
+            )
+        )
+
+    return qubits
+
+
+def createTransmons(
     qubit_levels_list: List[int],
     freq_list: List[float],
     anharm_list: List[float],
@@ -31,7 +85,7 @@ def createQubits(
     qubit_temp: float,
 ) -> List[chip.Transmon]:
     """
-    Creates and returns a list of qubits.
+    Creates and returns a list of transmons.
 
     Parameters
     ----------
@@ -318,6 +372,7 @@ def createSingleQubitGate(
     non_target_pulse: pulse.Envelope,
     sideband: float,
     xy_angle: float = None,
+    ideal: np.array = None,
 ) -> gates.Instruction:
     """
     Creates an instruction that represents a single qubit gate. This applies the target pulse to the target qubit's
@@ -343,6 +398,8 @@ def createSingleQubitGate(
         Frequency of sideband
     xy_angle: float
         The angle by which the target's drive should be shifted to create a different gate
+    ideal: np.array
+        Matrix representation of the ideal gate, if not specified by the name.
 
     Returns
     -------
@@ -354,6 +411,7 @@ def createSingleQubitGate(
         t_start=0.0,
         t_end=t_final,
         channels=[d.name for d in drives],
+        ideal=ideal,
     )
     for i in range(len(drives)):
         if i == target:
@@ -406,8 +464,6 @@ def createTwoQubitsGate(
         pulse for correcting phase
     sideband: float
         Frequency of sideband
-    xy_angle: float
-        The angle by which the target's drive should be shifted to create a different gate
 
     Returns
     -------
@@ -434,6 +490,78 @@ def createTwoQubitsGate(
             gate.add_component(carrier, drives[i].name)
 
     return gate
+
+
+def findPeaks(x: np.array, y: np.array, N: int) -> Tuple[np.array, np.array]:
+    """
+    Returns the x and y values of the N largest local maxima in y.
+    """
+    peaks = find_peaks(y)[0]
+    peakX = x[peaks]
+    peakY = y[peaks]
+    maxIndices = peakY.argsort()[-N:][::-1]
+    return peakX[maxIndices], peakY[maxIndices]
+
+
+def findFrequencyPeaks(
+    time: np.array, signal: np.array, N: int, normalise: bool = False
+) -> Tuple[np.array, np.array]:
+    """
+    Calculates the Fourier transformation of the signal and returns the N highest peaks from the frequency spectrum.
+    Parameters
+    ----------
+    time: array of time stamps
+    signal: array of signal values at the time stamps
+    N: number of peaks to return
+    normalise: whether the spectrum should be normalised
+    Returns
+    -------
+    a tuple of frequencies and peak values for all N peaks
+    """
+    x = time.flatten()
+    y = signal.flatten()
+
+    freq_signal = np.fft.rfft(y)
+    if normalise and np.abs(np.max(freq_signal)) > 1e-14:
+        normalised = freq_signal / np.max(freq_signal)
+    else:
+        normalised = freq_signal
+    freq = np.fft.rfftfreq(len(x), x[-1] / len(x))
+
+    return findPeaks(freq, np.abs(normalised) ** 2, N)
+
+
+def calculatePopulation(
+    exp: Experiment, psi_init: tf.Tensor, sequence: List[str]
+) -> np.array:
+    """
+    Calculates the time dependent population starting from a specific initial state.
+
+    Parameters
+    ----------
+    exp: Experiment
+        The experiment containing the model and propagators
+    psi_init: tf.Tensor
+        Initial state vector
+    sequence: List[str]
+        List of gate names that will be applied to the state
+
+    Returns
+    -------
+    np.array
+       two-dimensional array, first dimension: time, second dimension: population of the levels
+    """
+    # calculate the time dependent level population
+    model = exp.pmap.model
+    dUs = exp.partial_propagators
+    psi_t = psi_init.numpy()
+    pop_t = exp.populations(psi_t, model.lindbladian)
+    for gate in sequence:
+        for du in dUs[gate]:
+            psi_t = np.matmul(du, psi_t)
+            pops = exp.populations(psi_t, model.lindbladian)
+            pop_t = np.append(pop_t, pops, axis=1)
+    return pop_t
 
 
 def getQubitsPopulation(population: np.array, dims: List[int]) -> np.array:
