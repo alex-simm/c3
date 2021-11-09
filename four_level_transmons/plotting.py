@@ -266,45 +266,12 @@ def plotComplexMatrixAbsOrPhase(
     plt.close()
 
 
-def calculatePopulation(
-    exp: Experiment, psi_init: tf.Tensor, sequence: List[str]
-) -> np.array:
-    """
-    Calculates the time dependent population starting from a specific initial state.
-
-    Parameters
-    ----------
-    exp: Experiment
-        The experiment containing the model and propagators
-    psi_init: tf.Tensor
-        Initial state vector
-    sequence: List[str]
-        List of gate names that will be applied to the state
-
-    Returns
-    -------
-    np.array
-       two-dimensional array, first dimension: time, second dimension: population of the levels
-    """
-    # calculate the time dependent level population
-    model = exp.pmap.model
-    dUs = exp.partial_propagators
-    psi_t = psi_init.numpy()
-    pop_t = exp.populations(psi_t, model.lindbladian)
-    for gate in sequence:
-        for du in dUs[gate]:
-            psi_t = np.matmul(du, psi_t)
-            pops = exp.populations(psi_t, model.lindbladian)
-            pop_t = np.append(pop_t, pops, axis=1)
-    return pop_t
-
-
 def plotPopulation(
     exp: Experiment,
-    psi_init: tf.Tensor,
+    population: np.array,
     sequence: List[str],
     labels: List[str] = None,
-    usePlotly=True,
+    usePlotly=False,
     vertical_lines=False,
     filename: str = None,
 ):
@@ -314,8 +281,8 @@ def plotPopulation(
     ----------
     exp: Experiment
         The experiment containing the model and propagators
-    psi_init: np.array
-        Initial state vector
+    population: np.array
+        The population
     sequence: List[str]
         List of gate names that will be applied to the state
     labels: List[str]
@@ -330,11 +297,10 @@ def plotPopulation(
     """
     # calculate the time dependent level population
     model = exp.pmap.model
-    pop_t = calculatePopulation(exp, psi_init, sequence)
 
     # timestamps
     dt = exp.ts[1] - exp.ts[0]
-    ts = np.linspace(0.0, dt * pop_t.shape[1], pop_t.shape[1])
+    ts = np.linspace(0.0, dt * population.shape[1], population.shape[1])
 
     legend_labels = labels if labels else model.state_labels
     labelX = "Time [ns]"
@@ -343,11 +309,11 @@ def plotPopulation(
     # create the plot
     if usePlotly:
         fig = go.Figure()
-        for i in range(len(pop_t.T[0])):
+        for i in range(len(population.T[0])):
             fig.add_trace(
                 go.Scatter(
                     x=ts / 1e-9,
-                    y=pop_t.T[:, i],
+                    y=population.T[:, i],
                     mode="lines",
                     name=str(legend_labels[i]),
                 )
@@ -355,7 +321,7 @@ def plotPopulation(
         fig.update_layout(xaxis_title=labelX, yaxis_title=labelY)
     else:
         fig, axs = plt.subplots(1, 1, figsize=[10, 5])
-        axs.plot(ts / 1e-9, pop_t.T)
+        axs.plot(ts / 1e-9, population.T)
 
         # set plot properties
         axs.tick_params(direction="in", left=True, right=True, top=False, bottom=True)
@@ -383,8 +349,8 @@ def plotPopulation(
         else:
             plt.vlines(
                 x=gate_times / 1e-9,
-                ymin=tf.reduce_min(pop_t),
-                ymax=tf.reduce_max(pop_t),
+                ymin=tf.reduce_min(population),
+                ymax=tf.reduce_max(population),
                 linestyles=":",
                 colors="black",
             )
@@ -405,7 +371,7 @@ def plotPopulation(
 
 def plotSplittedPopulation(
     exp: Experiment,
-    psi_init: tf.Tensor,
+    population: np.array,
     sequence: List[str],
     vertical_lines=False,
     filename: str = None,
@@ -417,8 +383,8 @@ def plotSplittedPopulation(
     ----------
     exp: Experiment
         The experiment containing the model and propagators
-    psi_init: np.array
-        Initial state vector
+    population: np.array
+        The population
     sequence: List[str]
         List of gate names that will be applied to the state
     vertical_lines: bool
@@ -430,13 +396,12 @@ def plotSplittedPopulation(
     """
     # calculate the time dependent level population
     model = exp.pmap.model
-    pop_t = calculatePopulation(exp, psi_init, sequence)
     dims = [s.hilbert_dim for s in model.subsystems.values()]
-    splitted = getQubitsPopulation(pop_t, dims)
+    splitted = getQubitsPopulation(population, dims)
 
     # timestamps
     dt = exp.ts[1] - exp.ts[0]
-    ts = np.linspace(0.0, dt * pop_t.shape[1], pop_t.shape[1])
+    ts = np.linspace(0.0, dt * population.shape[1], population.shape[1])
 
     # positions of vertical lines
     gate_steps = [exp.partial_propagators[g].shape[0] for g in sequence]
@@ -451,8 +416,8 @@ def plotSplittedPopulation(
         if vertical_lines:
             ax.vlines(
                 gate_times / 1e-9,
-                tf.reduce_min(pop_t),
-                tf.reduce_max(pop_t),
+                tf.reduce_min(population),
+                tf.reduce_max(population),
                 linestyles=":",
                 colors="black",
             )
