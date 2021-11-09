@@ -198,7 +198,7 @@ def unitary_infid(
         actual, dims=dims, index=index, outdims=[active_levels] * len(dims)
     )
     fid_lvls = active_levels ** len(index)
-    infid = 1 - tf_unitary_overlap(actual_comp, ideal, lvls=tf.constant(fid_lvls))
+    infid = 1 - tf_unitary_overlap(actual_comp, ideal, lvls=fid_lvls)
     return infid
 
 
