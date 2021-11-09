@@ -104,7 +104,7 @@ class Instruction:
                     )
             self.ideal = np_kron_n(gate_list)
 
-    def get_ideal_gate(self, dims, index=None):
+    def get_ideal_gate(self, dims, index=None, active_levels=2):
         if self.ideal is None:
             raise Exception(
                 "C3:ERROR: No ideal representation definded for gate"
@@ -116,14 +116,17 @@ class Instruction:
             targets = list(range(len(dims)))
 
         ideal_gate = insert_mat_kron(
-            [2] * len(dims),  # we compare to the computational basis
+            [active_levels] * len(dims),  # we compare to the computational basis
             targets,
             [self.ideal],
         )
 
         if index:
             ideal_gate = tf_project_to_comp(
-                ideal_gate, dims=[2] * len(dims), index=index
+                ideal_gate,
+                dims=[active_levels] * len(dims),
+                index=index,
+                outdims=[active_levels] * len(dims),
             )
 
         return ideal_gate
