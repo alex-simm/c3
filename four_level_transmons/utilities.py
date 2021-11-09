@@ -1,5 +1,5 @@
 import itertools
-from typing import List, Tuple
+from typing import List, Tuple, cast, Dict
 import numpy as np
 import tensorflow as tf
 import copy
@@ -12,6 +12,8 @@ import c3.signal.pulse as pulse
 import c3.signal.gates as gates
 import c3.libraries.hamiltonians as hamiltonians
 from scipy.signal import find_peaks
+
+from c3.model import Model
 
 
 def createQubits(
@@ -275,6 +277,7 @@ def createGenerator(
     drives: List[chip.Drive],
     sim_res: float = 100e9,
     awg_res: float = 2e9,
+    useDrag: bool = False,
 ) -> Gnr:
     """
     Creates and returns the generator.
@@ -287,6 +290,8 @@ def createGenerator(
         Resolution of the simulation
     awg_res: float
         Resolution of AWG
+    useDrag: bool
+        Whether to enable DRAG in the AWG
 
     Returns
     -------
@@ -319,6 +324,10 @@ def createGenerator(
         },
         chains=chains,
     )
+
+    if useDrag:
+        print("enabling DRAG2")
+        generator.devices["AWG"].enable_drag_2()
 
     return generator
 
@@ -490,6 +499,27 @@ def createTwoQubitsGate(
             gate.add_component(carrier, drives[i].name)
 
     return gate
+
+
+def getDrive(model: Model, subsystem: chip.PhysicalComponent) -> chip.Drive:
+    """
+    Returns the drive line that is connected to the subsystem, or None if no drive is connected to it.
+    """
+    drives = [
+        cast(chip.Drive, d) for d in model.couplings.values() if type(d) == chip.Drive
+    ]
+    connected = list(filter(lambda d: subsystem.name in d.connected, drives))
+    return connected[0] if len(connected) > 0 else None
+
+
+def generateSignal(
+    experiment: Experiment, gate: gates.Instruction, subsystem: chip.PhysicalComponent
+) -> Dict[str, tf.Tensor]:
+    """
+    Makes the generator generate a signal for the specific subsystem and returns it.
+    """
+    drive = getDrive(experiment.pmap.model, subsystem).name
+    return experiment.pmap.generator.generate_signals(gate)[drive]
 
 
 def findPeaks(x: np.array, y: np.array, N: int) -> Tuple[np.array, np.array]:
