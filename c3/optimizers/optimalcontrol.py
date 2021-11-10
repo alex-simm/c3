@@ -186,5 +186,5 @@ class OptimalControl(Optimizer):
         self.evaluation += 1
 
         if self.callback is not None:
-            self.callback(goal.numpy())
+            self.callback(self.evaluation + 1, goal.numpy())
         return goal

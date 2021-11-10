@@ -5,7 +5,7 @@ import tensorflow as tf
 import copy
 from c3.c3objs import Quantity as Qty
 from c3.experiment import Experiment
-from c3.generator.generator import Generator as Gnr
+from c3.generator.generator import Generator
 import c3.libraries.chip as chip
 import c3.generator.devices as devices
 import c3.signal.pulse as pulse
@@ -274,11 +274,11 @@ def createDrives(qubits: List[chip.Transmon]) -> List[chip.Drive]:
 
 
 def createGenerator(
-    drives: List[chip.Drive],
-    sim_res: float = 100e9,
-    awg_res: float = 2e9,
-    useDrag: bool = False,
-) -> Gnr:
+        drives: List[chip.Drive],
+        sim_res: float = 100e9,
+        awg_res: float = 2e9,
+        useDrag: bool = False,
+) -> Generator:
     """
     Creates and returns the generator.
 
@@ -300,7 +300,7 @@ def createGenerator(
     chain = ["LO", "AWG", "DigitalToAnalog", "Response", "Mixer", "VoltsToHertz"]
     chains = {f"{d.name}": chain for d in drives}
 
-    generator = Gnr(
+    generator = Generator(
         devices={
             "LO": devices.LO(name="lo", resolution=sim_res, outputs=1),
             "AWG": devices.AWG(name="awg", resolution=awg_res, outputs=1),
@@ -512,13 +512,34 @@ def getDrive(model: Model, subsystem: chip.PhysicalComponent) -> chip.Drive:
 
 
 def generateSignal(
-    experiment: Experiment, gate: gates.Instruction, subsystem: chip.PhysicalComponent
+        experiment: Experiment, gate: gates.Instruction, subsystem: chip.PhysicalComponent
 ) -> Dict[str, tf.Tensor]:
     """
     Makes the generator generate a signal for the specific subsystem and returns it.
     """
     drive = getDrive(experiment.pmap.model, subsystem).name
     return experiment.pmap.generator.generate_signals(gate)[drive]
+
+
+def getOutputFromDevice(
+        gen: Generator, gate: gates.Instruction, channel: str, deviceName: str
+):
+    gen.generate_signals(gate)
+    return gen.getDeviceOutput(channel, deviceName)
+
+
+def getEnvelope(gen: Generator, gate: gates.Instruction, channel: str):
+    full_signal = gen.generate_signals(gate)[channel]
+    values1 = full_signal["values"].numpy()
+    envelope = gen.getDeviceOutput(channel, "Response")
+    values2 = envelope["inphase"].numpy()
+    # TODO: this isn't good!
+    factor = np.max(np.abs(values1)) / np.max(np.abs(values2))
+    return (
+        envelope["ts"].numpy(),
+        factor * envelope["inphase"].numpy(),
+        factor * envelope["quadrature"].numpy(),
+    )
 
 
 def findPeaks(x: np.array, y: np.array, N: int) -> Tuple[np.array, np.array]:

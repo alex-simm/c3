@@ -8,7 +8,7 @@ from c3.experiment import Experiment
 import tensorflow as tf
 
 
-def plotSignal(time, signal, filename=None):
+def plotSignal(time, signal, envelope=None, pwcTimes=None, filename=None):
     """
     Plots a time dependent drive signal.
 
@@ -18,6 +18,10 @@ def plotSignal(time, signal, filename=None):
         timestamps
     signal
         the function values
+    envelope
+        Envelope of the signal. If not none, plot this array as a dashed line.
+    pwcTimes
+        Timestamps of a PWC signal. If this and envelope are not none, plots the timestamps as circles.
     filename: str
         Optional name of the file to which the plot will be saved. If none,
         it will only be shown.
@@ -26,6 +30,11 @@ def plotSignal(time, signal, filename=None):
     signal = signal.flatten()
     plt.figure()
     plt.plot(time, signal)
+    if envelope is not None:
+        plt.plot(envelope[0].flatten(), envelope[1].flatten(), "--", color="black")
+        if pwcTimes is not None:
+            indices = [(np.abs(time - t)).argmin() for t in pwcTimes]
+            plt.plot(envelope[0][indices], envelope[1][indices], "o", color="black")
     plt.xlabel("Time")
     plt.ylabel("Signal")
 
@@ -93,7 +102,12 @@ def plotSignalSpectrum(
 
 
 def plotSignalAndSpectrum(
-    time, signal, spectrum_threshold: float = 1e-4, filename=None
+        time,
+        signal,
+        envelope=None,
+        pwcTimes=None,
+        spectrum_threshold: float = 1e-4,
+        filename=None,
 ):
     """
     Plots a time dependent drive signal and its frequency spectrum.
@@ -104,6 +118,10 @@ def plotSignalAndSpectrum(
         timestamps
     signal
         the function values
+    envelope
+        Envelope of the signal. If not none, plot this array as a dashed line.
+    pwcTimes
+        Timestamps of a PWC signal. If this and envelope are not none, plots the timestamps as circles.
     spectrum_threshold: float
         If not None, only the part of the normalised spectrum whose absolute square
         is larger than this value will be plotted.
@@ -117,6 +135,11 @@ def plotSignalAndSpectrum(
 
     # time domain
     ax[0].plot(time, signal)
+    if envelope is not None:
+        ax[0].plot(envelope[0].flatten(), envelope[1].flatten(), "--", color="black")
+        if pwcTimes is not None:
+            indices = [(np.abs(time - t)).argmin() for t in pwcTimes]
+            ax[0].plot(envelope[0][indices], envelope[1][indices], "o", color="black")
     ax[0].set_xlabel("Time")
     ax[0].set_xlabel("Signal")
 
