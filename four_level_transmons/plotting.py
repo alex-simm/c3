@@ -8,6 +8,39 @@ from c3.experiment import Experiment
 import tensorflow as tf
 
 
+def plotData(x, y, xlabel: str = None, ylabel: str = None, filename: str = None):
+    """
+    Plots a set of data points.
+
+    Parameters
+    ----------
+    x,y
+        data values
+    xlabel, ylabel:str
+        Optional labels for the axes.
+    filename: str
+        Optional name of the file to which the plot will be saved. If none,
+        it will only be shown.
+    """
+    if isinstance(x, (np.ndarray, np.generic)):
+        x = x.flatten()
+    if isinstance(y, (np.ndarray, np.generic)):
+        y = y.flatten()
+    plt.figure()
+    plt.plot(x, y)
+    if xlabel:
+        plt.xlabel(xlabel)
+    if ylabel:
+        plt.ylabel(ylabel)
+
+    # show and save
+    plt.tight_layout()
+    if filename:
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
+    plt.show()
+    plt.close()
+
+
 def plotSignal(time, signal, envelope=None, pwcTimes=None, filename=None):
     """
     Plots a time dependent drive signal.
@@ -517,6 +550,5 @@ def plotSplittedPopulation(
     # show and save
     if filename:
         plt.savefig(filename, bbox_inches="tight", dpi=100)
-    else:
-        plt.show()
+    plt.show()
     plt.close()

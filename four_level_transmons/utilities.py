@@ -449,6 +449,7 @@ def createTwoQubitsGate(
     target_pulse: pulse.Envelope,
     non_target_pulse: pulse.Envelope,
     sideband: float,
+    ideal: np.array = None,
 ) -> gates.Instruction:
     """
     Creates a gate that acts on a list of qubits. This applies a copy of the target pulse to all the target qubit's
@@ -472,6 +473,8 @@ def createTwoQubitsGate(
         pulse for correcting phase
     sideband: float
         Frequency of sideband
+    ideal: np.array
+        Matrix representation of the ideal gate, if not specified by the name.
 
     Returns
     -------
@@ -483,6 +486,7 @@ def createTwoQubitsGate(
         t_start=0.0,
         t_end=t_final,
         channels=[d.name for d in drives],
+        ideal=ideal,
     )
 
     for i in range(len(drives)):
