@@ -41,7 +41,14 @@ def plotData(x, y, xlabel: str = None, ylabel: str = None, filename: str = None)
     plt.close()
 
 
-def plotSignal(time, signal, envelope=None, pwcTimes=None, filename=None):
+def plotSignal(
+        time,
+        signal,
+        envelope=None,
+        pwcTimes=None,
+        min_signal_limit: float = 0.2e9,
+        filename=None,
+):
     """
     Plots a time dependent drive signal.
 
@@ -55,6 +62,8 @@ def plotSignal(time, signal, envelope=None, pwcTimes=None, filename=None):
         Envelope of the signal. If not none, plot this array as a dashed line.
     pwcTimes
         Timestamps of a PWC signal. If this and envelope are not none, plots the timestamps as circles.
+    min_signal_limit
+        If not null, the limits for the y axis in the time domain will be at least this.
     filename: str
         Optional name of the file to which the plot will be saved. If none,
         it will only be shown.
@@ -70,6 +79,9 @@ def plotSignal(time, signal, envelope=None, pwcTimes=None, filename=None):
             plt.plot(envelope[0][indices], envelope[1][indices], "o", color="black")
     plt.xlabel("Time")
     plt.ylabel("Signal")
+    if min_signal_limit is not None:
+        limit = max(min_signal_limit, 1.1 * np.max(np.abs(signal)))
+        plt.ylim(-limit, limit)
 
     # show and save
     plt.tight_layout()
@@ -140,6 +152,7 @@ def plotSignalAndSpectrum(
         envelope=None,
         pwcTimes=None,
         spectrum_threshold: float = 1e-4,
+        min_signal_limit: float = 0.2e9,
         filename=None,
 ):
     """
@@ -158,6 +171,8 @@ def plotSignalAndSpectrum(
     spectrum_threshold: float
         If not None, only the part of the normalised spectrum whose absolute square
         is larger than this value will be plotted.
+    min_signal_limit
+        If not null, the limits for the y axis in the time domain will be at least this.
     filename: str
         Optional name of the file to which the plot will be saved. If none,
         it will only be shown.
@@ -175,6 +190,9 @@ def plotSignalAndSpectrum(
             ax[0].plot(envelope[0][indices], envelope[1][indices], "o", color="black")
     ax[0].set_xlabel("Time")
     ax[0].set_xlabel("Signal")
+    if min_signal_limit is not None:
+        limit = max(min_signal_limit, 1.1 * np.max(np.abs(signal)))
+        ax[0].set_ylim(-limit, limit)
 
     # calculate frequency spectrum
     freq_signal = np.fft.rfft(signal)
