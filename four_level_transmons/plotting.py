@@ -309,7 +309,7 @@ def plotComplexMatrix(
         pad=0.1,
         ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
     )
-    cbar.ax.set_yticklabels(["$-\\pi$", "$\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
+    cbar.ax.set_yticklabels(["$-\\pi$", "$-\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
 
     # show and save
     plt.tight_layout()
@@ -356,8 +356,11 @@ def plotComplexMatrixAbsOrPhase(
     # plot
     fig = plt.figure()
     axis = fig.add_subplot(111)
-    norm = colors.Normalize(vmin=-np.pi, vmax=np.pi)
     colours = cm.get_cmap(colourMap)
+    if phase:
+        norm = colors.Normalize(vmin=-np.pi, vmax=np.pi)
+    else:
+        norm = colors.Normalize(vmin=0, vmax=1)
     axis.imshow(
         data,
         cmap=colours,
@@ -378,11 +381,9 @@ def plotComplexMatrixAbsOrPhase(
 
     # colour bar
     if phase:
-        norm = colors.Normalize(vmin=-np.pi, vmax=np.pi)
         ticks = [-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi]
     else:
-        norm = colors.Normalize(vmin=0, vmax=np.max(data))
-        ticks = np.linspace(0, np.max(data), 5)
+        ticks = np.linspace(0, 1, 5)
     cbar = fig.colorbar(
         cm.ScalarMappable(norm=norm, cmap=colours),
         ax=axis,
