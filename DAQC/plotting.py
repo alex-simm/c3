@@ -24,10 +24,9 @@ def plotSignal(time, signal, filename=None):
     """
     time = time.flatten()
     signal = signal.flatten()
-    fig, ax = plt.subplots(1, 1, figsize=(12, 5))
-    ax.plot(time, signal)
-    ax.set_xlabel("Time")
-    ax.set_xlabel("Signal")
+    plt.plot(time, signal)
+    plt.xlabel("Time")
+    plt.ylabel("Signal")
 
     # show and save
     plt.tight_layout()
