@@ -199,6 +199,9 @@ class OptimalControl(Optimizer):
                 self.optim_status[cal.__name__] = val
             logfile.flush()
 
+        if self.callback is not None:
+            self.callback(goal.numpy())
+
         self.optim_status["params"] = [
             par.numpy().tolist() for par in self.pmap.get_parameters()
         ]
