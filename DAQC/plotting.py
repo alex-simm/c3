@@ -393,14 +393,12 @@ def plotPopulation(
     if usePlotly:
         if filename:
             fig.write_image(filename)
-        else:
-            fig.show()
+        fig.show()
     else:
         if filename:
             plt.savefig(filename, bbox_inches="tight", dpi=100)
             plt.close()
-        else:
-            plt.show()
+        plt.show()
 
 
 def plotSplittedPopulation(
@@ -468,6 +466,5 @@ def plotSplittedPopulation(
     # show and save
     if filename:
         plt.savefig(filename, bbox_inches="tight", dpi=100)
-    else:
-        plt.show()
+    plt.show()
     plt.close()

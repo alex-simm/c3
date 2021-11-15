@@ -200,7 +200,7 @@ class OptimalControl(Optimizer):
             logfile.flush()
 
         if self.callback is not None:
-            self.callback(goal.numpy())
+            self.callback(self.evaluation + 1, goal.numpy())
 
         self.optim_status["params"] = [
             par.numpy().tolist() for par in self.pmap.get_parameters()
