@@ -52,6 +52,7 @@ class Optimizer:
         self.logger = []
         if logger is not None:
             self.logger = logger
+        self.callback: Callable = None
 
     def set_algorithm(self, algorithm: Callable) -> None:
         if algorithm:
@@ -296,6 +297,9 @@ class Optimizer:
         if isinstance(goal, tf.Tensor):
             goal = float(goal)
         return goal
+
+    def set_callback(self, callback: Callable):
+        self.callback = callback
 
 
 class BaseLogger:
