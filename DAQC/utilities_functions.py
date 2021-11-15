@@ -1,5 +1,5 @@
 import itertools
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import copy
@@ -380,9 +380,10 @@ def createTwoQubitsGate(
     carriers: List[pulse.Carrier],
     targets: List[int],
     t_final: float,
-    target_pulse: pulse.Envelope,
+    target_pulses: Tuple[pulse.Envelope, pulse.Envelope],
     non_target_pulse: pulse.Envelope,
     sideband: float,
+    ideal: np.array = None,
 ) -> gates.Instruction:
     """
     Creates a gate that acts on a list of qubits. This applies a copy of the target pulse to all the target qubit's
@@ -400,14 +401,14 @@ def createTwoQubitsGate(
         indices of the target qubits on which the gate should act
     t_final: float
         Final gate time for single qubit rotation gates
-    target_pulse: pulse.Envelope
-        pulse for single qubit rotation gates
+    target_pulses: Tuple[pulse.Envelope, pulse.Envelope]
+        pulses for both target drives in two qubit gates
     non_target_pulse: pulse.Envelope
         pulse for correcting phase
     sideband: float
         Frequency of sideband
-    xy_angle: float
-        The angle by which the target's drive should be shifted to create a different gate
+    ideal: np.array
+        Matrix representation of the ideal gate, if not specified by the name.
 
     Returns
     -------
@@ -419,11 +420,13 @@ def createTwoQubitsGate(
         t_start=0.0,
         t_end=t_final,
         channels=[d.name for d in drives],
+        ideal=ideal,
     )
 
     for i in range(len(drives)):
         if i in targets:
-            gate.add_component(copy.deepcopy(target_pulse), drives[i].name)
+            idx = targets.index(i)
+            gate.add_component(target_pulses[idx], drives[i].name)
             gate.add_component(copy.deepcopy(carriers[i]), drives[i].name)
         else:
             carrier = copy.deepcopy(carriers[i])
