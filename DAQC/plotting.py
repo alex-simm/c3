@@ -404,6 +404,7 @@ def plotSplittedPopulation(
     exp: Experiment,
     psi_init: tf.Tensor,
     sequence: List[str],
+    subplotNames: List[str] = None,
     vertical_lines=False,
     filename: str = None,
 ) -> None:
@@ -418,6 +419,8 @@ def plotSplittedPopulation(
         Initial state vector
     sequence: List[str]
         List of gate names that will be applied to the state
+    subplotNames: List[str]
+        If not None, these will be used as titles for the subplots
     vertical_lines: bool
         If true, this add a dotted vertical line after each gate
     filename: str
@@ -444,6 +447,8 @@ def plotSplittedPopulation(
     # create both subplots
     fig, axs = plt.subplots(1, len(splitted), sharey="all")
     for idx, ax in enumerate(axs):
+        if subplotNames:
+            ax.set_title(subplotNames[idx])
         ax.plot(ts / 1e-9, splitted[idx].T)
         if vertical_lines:
             ax.vlines(
