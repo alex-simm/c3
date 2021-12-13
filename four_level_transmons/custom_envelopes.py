@@ -57,7 +57,11 @@ def createDoubleGaussianPulse(t_final: float, sigma: float, sigma2: float, relat
 
 
 def createPWCPulse(
-    t_final: float, num_pieces: int, shape_fctn: Callable, values: tf.Tensor = None
+    t_final: float,
+    num_pieces: int,
+    shape_fctn: Callable,
+    values: tf.Tensor = None,
+    amp: float = 0.5,
 ) -> pulse.Envelope:
     """
     Creates a piece-wise constant envelope using the given shape function.
@@ -70,7 +74,7 @@ def createPWCPulse(
         name="pwc",
         desc="PWC envelope",
         params={
-            "amp": Quantity(value=0.5, min_val=0.2, max_val=0.6, unit="V"),
+            "amp": Quantity(value=amp, min_val=0.2, max_val=0.6, unit="V"),
             "t_final": Quantity(
                 value=t_final, min_val=0.9 * t_final, max_val=1.1 * t_final, unit="s"
             ),
@@ -104,7 +108,12 @@ def createPWCGaussianPulse(
 
 
 def createPWCDoubleGaussianPulse(
-    t_final: float, sigma: float, sigma2: float, relative_amp: float, num_pieces: int
+    amp: float,
+    t_final: float,
+    sigma: float,
+    sigma2: float,
+    relative_amp: float,
+    num_pieces: int,
 ) -> pulse.Envelope:
     """
     Creates a piece-wise constant superposition of two Gaussian pulses.
