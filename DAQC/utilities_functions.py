@@ -78,7 +78,7 @@ def createQubits(
                 hilbert_dim=qubit_levels_list[i],
                 t1=Qty(value=t1_list[i], min_val=1e-6, max_val=90e-6, unit="s"),
                 t2star=Qty(
-                    value=t2star_list[i], min_val=10e-6, max_val=90e-6, unit="s"
+                    value=t2star_list[i], min_val=1e-6, max_val=90e-6, unit="s"
                 ),
                 temp=Qty(value=qubit_temp, min_val=0.0, max_val=0.12, unit="K"),
                 phi=Qty(value=phi_list[i], max_val=5.0, min_val=0.0, unit="Wb"),

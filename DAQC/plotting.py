@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt, colors, cm
 import plotly.graph_objects as go
 
-from DAQC.utilities_functions import getQubitsPopulation
+from utilities_functions import getQubitsPopulation
 from c3.experiment import Experiment
 import tensorflow as tf
 
@@ -404,10 +404,7 @@ def plotSplittedPopulation(
     exp: Experiment,
     psi_init: tf.Tensor,
     sequence: List[str],
-<<<<<<< HEAD
-=======
     subplotNames: List[str] = None,
->>>>>>> f4d550e0341ee7bdc4c597f8ed0797056dd0e249
     vertical_lines=False,
     filename: str = None,
 ) -> None:
@@ -422,11 +419,8 @@ def plotSplittedPopulation(
         Initial state vector
     sequence: List[str]
         List of gate names that will be applied to the state
-<<<<<<< HEAD
-=======
     subplotNames: List[str]
         If not None, these will be used as titles for the subplots
->>>>>>> f4d550e0341ee7bdc4c597f8ed0797056dd0e249
     vertical_lines: bool
         If true, this add a dotted vertical line after each gate
     filename: str
@@ -453,11 +447,8 @@ def plotSplittedPopulation(
     # create both subplots
     fig, axs = plt.subplots(1, len(splitted), sharey="all")
     for idx, ax in enumerate(axs):
-<<<<<<< HEAD
-=======
         if subplotNames:
             ax.set_title(subplotNames[idx])
->>>>>>> f4d550e0341ee7bdc4c597f8ed0797056dd0e249
         ax.plot(ts / 1e-9, splitted[idx].T)
         if vertical_lines:
             ax.vlines(
