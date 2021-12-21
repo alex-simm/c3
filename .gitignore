@@ -148,3 +148,5 @@ DAQC/2Qubits_test.py
 DAQC/2QubitQuTiP.py
 DAQC/2Qubit_testing_iSWAP copy.py
 DAQC/2Qubit_testing_no_tuning.py
+DAQC/output/recent
+DAQC/okteto.yml
