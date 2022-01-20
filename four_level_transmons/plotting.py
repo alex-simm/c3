@@ -205,8 +205,9 @@ def plotSignalAndSpectrum(
     # cut spectrum if necessary
     if spectrum_threshold is not None:
         limits = np.flatnonzero(np.abs(normalised) ** 2 > spectrum_threshold)
-        freq = freq[limits[0] : limits[-1]]
-        normalised = normalised[limits[0] : limits[-1]]
+        if len(limits) > 1:
+            freq = freq[limits[0] : limits[-1]]
+            normalised = normalised[limits[0] : limits[-1]]
 
     # plot frequency domain
     ax[1].plot(freq, normalised.real, label="Re")

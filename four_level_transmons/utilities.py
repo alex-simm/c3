@@ -538,7 +538,10 @@ def getEnvelope(gen: Generator, gate: gates.Instruction, channel: str):
     envelope = gen.getDeviceOutput(channel, "Response")
     values2 = envelope["inphase"].numpy()
     # TODO: this isn't good!
-    factor = np.max(np.abs(values1)) / np.max(np.abs(values2))
+    if np.max(np.abs(values2)) != 0:
+        factor = np.max(np.abs(values1)) / np.max(np.abs(values2))
+    else:
+        factor = 1
     return (
         envelope["ts"].numpy(),
         factor * envelope["inphase"].numpy(),
