@@ -42,22 +42,25 @@ def plotData(x, y, xlabel: str = None, ylabel: str = None, filename: str = None)
 
 
 def plotSignal(
-        time,
-        signal,
+        time: np.array,
+        real: np.array,
+        imag=None,
         envelope=None,
         pwcTimes=None,
-        min_signal_limit: float = 0.2e9,
+        min_signal_limit=0.2e9,
         filename=None,
 ):
     """
-    Plots a time dependent drive signal.
+    Plots a time dependent real or complex signal.
 
     Parameters
     ----------
     time
         timestamps
-    signal
-        the function values
+    real
+        real part of the function value
+    imag
+        imaginary part of the function value, or None
     envelope
         Envelope of the signal. If not none, plot this array as a dashed line.
     pwcTimes
@@ -69,21 +72,21 @@ def plotSignal(
         it will only be shown.
     """
     time = time.flatten()
-    signal = signal.flatten()
-    plt.figure()
-    plt.plot(time, signal)
-    if envelope is not None:
-        plt.plot(envelope[0].flatten(), envelope[1].flatten(), "--", color="black")
-        if pwcTimes is not None:
-            indices = [(np.abs(time - t)).argmin() for t in pwcTimes]
-            plt.plot(envelope[0][indices], envelope[1][indices], "o", color="black")
-    plt.xlabel("Time")
-    plt.ylabel("Signal")
-    if min_signal_limit is not None:
-        limit = max(min_signal_limit, 1.1 * np.max(np.abs(signal)))
-        plt.ylim(-limit, limit)
+    real = real.flatten()
+    if imag is not None:
+        imag = imag.flatten()
 
-    # show and save
+    fig, ax = plt.subplots(1, 1)
+    drawSignal(
+        ax[0],
+        time,
+        real=real,
+        imag=imag,
+        envelope=envelope,
+        pwcTimes=pwcTimes,
+        min_signal_limit=min_signal_limit,
+    )
+
     plt.tight_layout()
     if filename:
         plt.savefig(filename, bbox_inches="tight", dpi=100)
@@ -91,11 +94,11 @@ def plotSignal(
     plt.close()
 
 
-def plotSignalSpectrum(
-    time: np.array,
-    signal: np.array,
-    spectrum_threshold: float = 1e-4,
-    filename: str = None,
+def plotSpectrum(
+        time: np.array,
+        signal: np.array,
+        spectrum_threshold: float = 1e-4,
+        filename: str = None,
 ):
     """
     Plots the normalised frequency spectrum of a time-dependent signal.
@@ -105,7 +108,7 @@ def plotSignalSpectrum(
     time: np.array
         timestamps
     signal: np.array
-        signal value
+        real signal values
     spectrum_threshold: float
         If not None, only the part of the normalised spectrum whose absolute square
         is larger than this value will be plotted.
@@ -115,30 +118,11 @@ def plotSignalSpectrum(
     """
     time = time.flatten()
     signal = signal.flatten()
-    plt.figure()
 
-    # calculate frequency spectrum
-    freq_signal = np.fft.rfft(signal)
-    if np.abs(np.max(freq_signal)) > 1e-14:
-        normalised = freq_signal / np.max(freq_signal)
-    else:
-        normalised = freq_signal
-    freq = np.fft.rfftfreq(len(time), time[-1] / len(time))
+    fig, ax = plt.subplots(1, 1)
+    drawSpectrum(ax[1], time, signal, spectrum_threshold)
 
-    # cut spectrum if necessary
-    if spectrum_threshold is not None:
-        limits = np.flatnonzero(np.abs(normalised) ** 2 > spectrum_threshold)
-        freq = freq[limits[0] : limits[-1]]
-        normalised = normalised[limits[0] : limits[-1]]
-
-    # plot frequency domain
-    plt.plot(freq, normalised.real, label="Re")
-    plt.plot(freq, normalised.imag, label="Im")
-    plt.plot(freq, np.abs(normalised) ** 2, label="Square")
-    plt.xlabel("frequency")
-    plt.legend()
-
-    # show and save
+    fig.canvas.draw()
     plt.tight_layout()
     if filename:
         plt.savefig(filename, bbox_inches="tight", dpi=100)
@@ -147,12 +131,13 @@ def plotSignalSpectrum(
 
 
 def plotSignalAndSpectrum(
-        time,
-        signal,
+        time: np.array,
+        real: np.array,
+        imag=None,
         envelope=None,
         pwcTimes=None,
-        spectrum_threshold: float = 1e-4,
-        min_signal_limit: float = 0.2e9,
+        spectralThreshold: float = 1e-4,
+        min_signal_limit=0.2e9,
         filename=None,
 ):
     """
@@ -162,13 +147,15 @@ def plotSignalAndSpectrum(
     ----------
     time
         timestamps
-    signal
-        the function values
+    real
+        real part of the signal values
+    imag
+        imaginary part of the signal values, or None
     envelope
         Envelope of the signal. If not none, plot this array as a dashed line.
     pwcTimes
         Timestamps of a PWC signal. If this and envelope are not none, plots the timestamps as circles.
-    spectrum_threshold: float
+    spectralThreshold: float
         If not None, only the part of the normalised spectrum whose absolute square
         is larger than this value will be plotted.
     min_signal_limit
@@ -178,22 +165,79 @@ def plotSignalAndSpectrum(
         it will only be shown.
     """
     time = time.flatten()
-    signal = signal.flatten()
+    real = real.flatten()
+    if imag is not None:
+        imag = imag.flatten()
+        spectrumSignal = real ** 2 + imag ** 2
+    else:
+        spectrumSignal = real
     fig, ax = plt.subplots(1, 2, figsize=(12, 5))
 
-    # time domain
-    ax[0].plot(time, signal)
+    drawSignal(
+        ax[0],
+        time,
+        real=real,
+        imag=imag,
+        envelope=envelope,
+        pwcTimes=pwcTimes,
+        min_signal_limit=min_signal_limit,
+    )
+    drawSpectrum(
+        ax[1], time, signal=spectrumSignal, spectralThreshold=spectralThreshold
+    )
+
+    # show and save
+    plt.tight_layout()
+    if filename:
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
+    plt.show()
+    plt.close()
+
+
+def drawSignal(
+        axes: plt.Axes,
+        time: np.array,
+        real: np.array,
+        imag=None,
+        envelope=None,
+        pwcTimes=None,
+        min_signal_limit=0.2e9,
+):
+    """
+    Draws real part, imaginary part, and absolute square of a complex signal into an Axes object.
+    """
+    if imag is not None:
+        absSq = np.abs(real) ** 2 + np.abs(imag) ** 2
+        axes.plot(time, real, label="Re")
+        axes.plot(time, imag, label="Im")
+        axes.plot(time, absSq, label="AbsSq")
+        axes.legend()
+        maxVal = np.max(
+            [np.max(np.abs(real)), np.max(np.abs(real)), np.max(np.abs(real))]
+        )
+    else:
+        maxVal = np.max(np.abs(real))
+        axes.plot(time, real)
+
     if envelope is not None:
-        ax[0].plot(envelope[0].flatten(), envelope[1].flatten(), "--", color="black")
+        axes.plot(envelope[0].flatten(), envelope[1].flatten(), "--", color="black")
         if pwcTimes is not None:
             indices = [(np.abs(time - t)).argmin() for t in pwcTimes]
-            ax[0].plot(envelope[0][indices], envelope[1][indices], "o", color="black")
-    ax[0].set_xlabel("Time")
-    ax[0].set_xlabel("Signal")
-    if min_signal_limit is not None:
-        limit = max(min_signal_limit, 1.1 * np.max(np.abs(signal)))
-        ax[0].set_ylim(-limit, limit)
+            axes.plot(envelope[0][indices], envelope[1][indices], "o", color="black")
 
+    axes.set_xlabel("Time")
+    axes.set_xlabel("Signal")
+    if min_signal_limit is not None:
+        limit = max(min_signal_limit, 1.1 * maxVal)
+        axes.set_ylim(-limit, limit)
+
+
+def drawSpectrum(
+        axes: plt.Axes, time: np.array, signal: np.array, spectralThreshold: float = 1e-4
+):
+    """
+    Draws the frequency spectrum of a time signal into an Axes object.
+    """
     # calculate frequency spectrum
     freq_signal = np.fft.rfft(signal)
     if np.abs(np.max(freq_signal)) > 1e-14:
@@ -203,25 +247,19 @@ def plotSignalAndSpectrum(
     freq = np.fft.rfftfreq(len(time), time[-1] / len(time))
 
     # cut spectrum if necessary
-    if spectrum_threshold is not None:
-        limits = np.flatnonzero(np.abs(normalised) ** 2 > spectrum_threshold)
+    if spectralThreshold is not None:
+        limits = np.flatnonzero(np.abs(normalised) ** 2 > spectralThreshold)
         if len(limits) > 1:
-            freq = freq[limits[0] : limits[-1]]
-            normalised = normalised[limits[0] : limits[-1]]
+            end = min(limits[-1] + 1, len(freq) - 1)
+            freq = freq[limits[0]: end]
+            normalised = normalised[limits[0]: end]
 
     # plot frequency domain
-    ax[1].plot(freq, normalised.real, label="Re")
-    ax[1].plot(freq, normalised.imag, label="Im")
-    ax[1].plot(freq, np.abs(normalised) ** 2, label="Square")
-    ax[1].set_xlabel("frequency")
-    ax[1].legend()
-
-    # show and save
-    plt.tight_layout()
-    if filename:
-        plt.savefig(filename, bbox_inches="tight", dpi=100)
-    plt.show()
-    plt.close()
+    axes.plot(freq, normalised.real, label="Re")
+    axes.plot(freq, normalised.imag, label="Im")
+    axes.plot(freq, np.abs(normalised) ** 2, label="Square")
+    axes.set_xlabel("frequency")
+    axes.legend()
 
 
 def plotComplexMatrix(
@@ -313,6 +351,7 @@ def plotComplexMatrix(
     cbar.ax.set_yticklabels(["$-\\pi$", "$-\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
 
     # show and save
+    fig.canvas.draw()
     plt.tight_layout()
     if filename:
         plt.savefig(filename, bbox_inches="tight", dpi=100)
