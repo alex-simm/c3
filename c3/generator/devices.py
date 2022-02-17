@@ -858,6 +858,34 @@ class Mixer(Device):
 
 
 @dev_reg_deco
+class RealMixer(Device):
+    """Superposes two real input signals."""
+
+    def __init__(self, **props):
+        super().__init__(**props)
+        self.inputs = props.pop("inputs", 2)
+        self.outputs = props.pop("outputs", 1)
+
+    def process(self, instr: Instruction, chan: str, in1: dict, in2: dict):
+        """Combine signal from AWG and LO.
+
+        Parameters
+        ----------
+        lo_signal : dict
+            Local oscillator signal.
+        awg_signal : dict
+            Waveform generator signal.
+
+        Returns
+        -------
+        dict
+            Mixed signal.
+        """
+        self.signal = {"values": (in1["values"] + in2["values"]) / 2.0, "ts": in1["ts"]}
+        return self.signal
+
+
+@dev_reg_deco
 class LONoise(Device):
     """Noise applied to the local oscillator"""
 
@@ -981,12 +1009,13 @@ class DC_Offset(Device):
 class LO(Device):
     """Local oscillator device, generates a constant oscillating signal."""
 
-    def __init__(self, **props):
+    def __init__(self, lo_index, **props):
         super().__init__(**props)
         self.outputs = props.pop("outputs", 1)
         self.phase_noise = props.pop("phase_noise", 0)
         self.freq_noise = props.pop("freq_noise", 0)
         self.amp_noise = props.pop("amp_noise", 0)
+        self.lo_index = lo_index
 
     def process(
         self, instr: Instruction, chan: str, signal: List[Dict[str, Any]]
@@ -999,7 +1028,7 @@ class LO(Device):
         freq_noise = self.freq_noise
         components = instr.comps
         for comp in components[chan].values():
-            if isinstance(comp, Carrier):
+            if isinstance(comp, Carrier) and comp.name == f"carrier{self.lo_index}":
                 cos, sin = [], []
                 omega_lo = comp.params["freq"].get_value()
                 if amp_noise and freq_noise:
@@ -1059,7 +1088,7 @@ class AWG(Device):
         Filepath to store generated waveforms.
     """
 
-    def __init__(self, **props):
+    def __init__(self, awg_index, **props):
         self.logdir = props.pop(
             "logdir", os.path.join(tempfile.gettempdir(), "c3logs", "AWG")
         )
@@ -1070,6 +1099,7 @@ class AWG(Device):
         self.amp_tot_sq = None
         self.process = self.create_IQ
         self.centered_ts = True
+        self.awg_index = awg_index
 
     # TODO create DC function
 
@@ -1104,7 +1134,7 @@ class AWG(Device):
         ts = self.create_ts(instr.t_start, instr.t_end, centered=True)
         self.ts = ts
 
-        signal, norm = instr.get_awg_signal(chan, ts)
+        signal, norm = instr.get_awg_signal(chan, ts, self.awg_index)
 
         self.amp_tot = norm
         self.signal[chan] = {

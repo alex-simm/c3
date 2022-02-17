@@ -302,8 +302,8 @@ def createGenerator(
 
     generator = Generator(
         devices={
-            "LO": devices.LO(name="lo", resolution=sim_res, outputs=1),
-            "AWG": devices.AWG(name="awg", resolution=awg_res, outputs=1),
+            "LO": devices.LO(name="lo", lo_index=1, resolution=sim_res, outputs=1),
+            "AWG": devices.AWG(name="awg", awg_index=1, resolution=awg_res, outputs=1),
             "DigitalToAnalog": devices.DigitalToAnalog(
                 name="dac", resolution=sim_res, inputs=1, outputs=1
             ),
@@ -332,6 +332,173 @@ def createGenerator(
     return generator
 
 
+def createGenerator2LOs(
+        drives: List[chip.Drive],
+        sim_res: float = 100e9,
+        awg_res: float = 2e9,
+        useDrag: bool = False,
+) -> Generator:
+    """
+    Creates and returns the generator.
+
+    Parameters
+    ----------
+    drives: List[chip.Drive]
+        List of drives on the Qubits
+    sim_res: float
+        Resolution of the simulation
+    awg_res: float
+        Resolution of AWG
+    useDrag: bool
+        Whether to enable DRAG in the AWG
+
+    Returns
+    -------
+    Generator
+    """
+    chain = {
+        "LO1": [],
+        "LO2": [],
+        "AWG1": [],
+        "AWG2": [],
+        "DigitalToAnalog1": ["AWG1"],
+        "DigitalToAnalog2": ["AWG2"],
+        "Response1": ["DigitalToAnalog1"],
+        "Response2": ["DigitalToAnalog2"],
+        "Mixer1": ["LO1", "Response1"],
+        "Mixer2": ["LO2", "Response2"],
+        "RealMixer": ["Mixer1", "Mixer2"],
+        "VoltsToHertz": ["RealMixer"],
+    }
+    chains = {f"{d.name}": chain for d in drives}
+
+    generator = Generator(
+        devices={
+            "LO1": devices.LO(lo_index=1, name="lo1", resolution=sim_res, outputs=1),
+            "LO2": devices.LO(lo_index=2, name="lo2", resolution=sim_res, outputs=1),
+            "AWG1": devices.AWG(
+                awg_index=1, name="awg1", resolution=awg_res, outputs=1
+            ),
+            "AWG2": devices.AWG(
+                awg_index=2, name="awg2", resolution=awg_res, outputs=1
+            ),
+            "DigitalToAnalog1": devices.DigitalToAnalog(
+                name="dac1", resolution=sim_res, inputs=1, outputs=1
+            ),
+            "DigitalToAnalog2": devices.DigitalToAnalog(
+                name="dac2", resolution=sim_res, inputs=1, outputs=1
+            ),
+            "Response1": devices.Response(
+                name="resp1",
+                rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
+                resolution=sim_res,
+                inputs=1,
+                outputs=1,
+            ),
+            "Response2": devices.Response(
+                name="resp2",
+                rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
+                resolution=sim_res,
+                inputs=1,
+                outputs=1,
+            ),
+            "Mixer1": devices.Mixer(name="mixer1", inputs=2, outputs=1),
+            "Mixer2": devices.Mixer(name="mixer2", inputs=2, outputs=1),
+            "RealMixer": devices.RealMixer(name="realmixer", inputs=2, outputs=1),
+            "VoltsToHertz": devices.VoltsToHertz(
+                name="V_to_Hz",
+                V_to_Hz=Qty(value=1e9, min_val=0.9e9, max_val=1.1e9, unit="Hz/V"),
+                inputs=1,
+                outputs=1,
+            ),
+        },
+        chains=chains,
+    )
+
+    if useDrag:
+        generator.devices["AWG1"].enable_drag_2()
+        generator.devices["AWG2"].enable_drag_2()
+
+    return generator
+
+
+def createGeneratorNLOs(
+        drives: List[chip.Drive],
+        N: int,
+        sim_res: float = 100e9,
+        awg_res: float = 2e9,
+        useDrag: bool = False,
+) -> Generator:
+    """
+    Creates and returns the generator.
+
+    Parameters
+    ----------
+    drives: List[chip.Drive]
+        List of drives on the Qubits
+    N: int
+        The number of LOs and AWGs.
+    sim_res: float
+        Resolution of the simulation
+    awg_res: float
+        Resolution of AWG
+    useDrag: bool
+        Whether to enable DRAG in the AWG
+
+    Returns
+    -------
+    Generator
+    """
+
+    # create chain
+    chain: Dict[str, List[str]] = {}
+    for n in range(1, N + 1):
+        chain[f"LO{n}"] = []
+        chain[f"AWG{n}"] = []
+        chain[f"DigitalToAnalog{n}"] = [f"AWG{n}"]
+        chain[f"Response{n}"] = [f"DigitalToAnalog{n}"]
+        chain[f"Mixer{n}"] = [f"LO{n}", f"Response{n}"]
+    chain["RealMixer"] = [f"Mixer{n}" for n in range(1, N + 1)]
+    chain["VoltsToHertz"] = ["RealMixer"]
+    chains = {f"{d.name}": chain for d in drives}
+
+    # create devices
+    devs: Dict[str, devices.Device] = {}
+    for n in range(1, N + 1):
+        devs[f"LO{n}"] = devices.LO(
+            lo_index=n, name=f"lo{n}", resolution=sim_res, outputs=1
+        )
+        devs[f"AWG{n}"] = devices.AWG(
+            awg_index=n, name=f"awg{n}", resolution=awg_res, outputs=1
+        )
+        devs[f"DigitalToAnalog{n}"] = devices.DigitalToAnalog(
+            name=f"dac{n}", resolution=sim_res, inputs=1, outputs=1
+        )
+        devs[f"Response{n}"] = devices.Response(
+            name=f"resp{n}",
+            rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
+            resolution=sim_res,
+            inputs=1,
+            outputs=1,
+        )
+        devs[f"Mixer{n}"] = devices.Mixer(name=f"mixer{n}", inputs=2, outputs=1)
+    devs["RealMixer"] = devices.RealMixer(name="realmixer", inputs=N, outputs=1)
+    devs["VoltsToHertz"] = devices.VoltsToHertz(
+        name="V_to_Hz",
+        V_to_Hz=Qty(value=1e9, min_val=0.9e9, max_val=1.1e9, unit="Hz/V"),
+        inputs=1,
+        outputs=1,
+    )
+
+    generator = Generator(devices=devs, chains=chains)
+    if useDrag:
+        print("enabling DRAG2")
+        for n in range(1, N + 1):
+            generator.devices[f"AWG{n}"].enable_drag_2()
+
+    return generator
+
+
 def createCarriers(qubit_freqs: List[float], sideband: float) -> List[pulse.Carrier]:
     """
     Creates and returns a carrier for each qubit.
@@ -351,17 +518,18 @@ def createCarriers(qubit_freqs: List[float], sideband: float) -> List[pulse.Carr
     """
     carrier_array = []
 
+    framechange = 0.0  # (-sideband * t_final) % (2 * np.pi)
     for i in range(len(qubit_freqs)):
         f = qubit_freqs[i] + sideband
         carrier_parameters = {
             "freq": Qty(value=f, min_val=0.8 * f, max_val=1.2 * f, unit="Hz 2pi"),
             "framechange": Qty(
-                value=0.0, min_val=-np.pi, max_val=3 * np.pi, unit="rad"
+                value=framechange, min_val=-np.pi, max_val=3 * np.pi, unit="rad"
             ),
         }
         carrier_array.append(
             pulse.Carrier(
-                name="carrier",
+                name=f"carrier{i + 1}",
                 desc="Frequency of the local oscillator",
                 params=carrier_parameters,
             )
