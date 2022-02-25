@@ -818,3 +818,33 @@ def getQubitsPopulation(population: np.array, dims: List[int]) -> np.array:
         for i in range(numQubits):
             qubitsPopulations[i, levels[i]] += population[idx]
     return qubitsPopulations
+
+
+def partialTrace(M: np.ndarray, qubitsToKeep) -> np.ndarray:
+    """
+    Calculates the partial trace of a matrix.
+
+    Parameters
+    ----------
+    M: np.ndarray
+        Density matrix
+    qubitsToKeep: list
+        Index of qubit to be kept after taking the trace
+    Returns
+    -------
+    np.ndarray
+        Density matrix after taking partial trace
+    """
+    numQubits = int(np.log2(M.shape[0]))
+    qubitAxis = [(i, numQubits + i) for i in range(numQubits) if i not in qubitsToKeep]
+    minusFactor = [(i, 2 * i) for i in range(len(qubitAxis))]
+    minusQubitAxis = [
+        (q[0] - m[0], q[1] - m[1]) for q, m in zip(qubitAxis, minusFactor)
+    ]
+    Mres = np.reshape(M, [2, 2] * numQubits)
+    numQubitsLeft = numQubits - len(qubitAxis)
+    for i, j in minusQubitAxis:
+        Mres = np.trace(Mres, axis1=i, axis2=j)
+    if numQubitsLeft > 1:
+        Mres = np.reshape(Mres, [2 ** numQubitsLeft] * 2)
+    return Mres

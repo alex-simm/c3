@@ -1,6 +1,6 @@
 from typing import List, Tuple
 import numpy as np
-from matplotlib import pyplot as plt, colors, cm
+from matplotlib import pyplot as plt, colors, cm, lines
 import plotly.graph_objects as go
 
 from four_level_transmons.utilities import getQubitsPopulation
@@ -433,6 +433,95 @@ def plotComplexMatrixAbsOrPhase(
     )
     if phase:
         cbar.ax.set_yticklabels(["$-\\pi$", "$\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
+
+    # show and save
+    plt.tight_layout()
+    if filename:
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
+    plt.show()
+    plt.close()
+
+
+def plotComplexMatrixHinton(
+    M: np.array,
+    maxAbsolute: float = None,
+    xlabels: List[str] = None,
+    ylabels: List[str] = None,
+    colourMap: str = "nipy_spectral",
+    gridColour: str = None,
+    filename: str = None,
+):
+    # grid
+    lx = M.shape[1]
+    ly = M.shape[0]
+
+    # figure
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.patch.set_facecolor("white")
+    ax.set_aspect("equal", "box")
+    ax.xaxis.set_major_locator(plt.NullLocator())
+    ax.yaxis.set_major_locator(plt.NullLocator())
+    ax.set_xlim(-0.5, M.shape[0] - 0.5)
+    ax.set_ylim(-0.5, M.shape[1] - 0.5)
+
+    # add patches
+    colours = cm.get_cmap(colourMap)
+    if maxAbsolute is None:
+        maxAbsolute = 2 ** np.ceil(np.log2(np.abs(M).max()))
+
+    for (x, y), w in np.ndenumerate(M):
+        color = colours((np.angle(w) + np.pi) / (2 * np.pi))
+        size = min(1, np.sqrt(np.absolute(w) / maxAbsolute))
+        rect = plt.Rectangle(
+            (x - size / 2, y - size / 2), size, size, facecolor=color, edgecolor=color
+        )
+        ax.add_patch(rect)
+
+    # plot grid lines
+    if gridColour:
+        for x in range(1, M.shape[0]):
+            ax.add_line(
+                lines.Line2D(
+                    [x - 0.5, x - 0.5],
+                    [-0.5, M.shape[1] - 0.5],
+                    lw=1,
+                    color=gridColour,
+                    axes=ax,
+                )
+            )
+        for y in range(1, M.shape[1]):
+            ax.add_line(
+                lines.Line2D(
+                    [-0.5, M.shape[0] - 0.5],
+                    [y - 0.5, y - 0.5],
+                    lw=1,
+                    color=gridColour,
+                    axes=ax,
+                )
+            )
+
+    ax.autoscale_view()
+    ax.invert_yaxis()
+
+    # ticks and labels
+    ax.set_xticks(np.arange(0, lx, 1))
+    ax.set_yticks(np.arange(0, ly, 1))
+    if xlabels is not None:
+        ax.xaxis.set_ticklabels(xlabels, fontsize=12, rotation=-90)
+    if ylabels is not None:
+        ax.yaxis.set_ticklabels(ylabels, fontsize=12)
+
+    # colour bar
+    norm = colors.Normalize(vmin=-np.pi, vmax=np.pi)
+    cbar = fig.colorbar(
+        cm.ScalarMappable(norm=norm, cmap=colours),
+        ax=ax,
+        shrink=1,
+        pad=0.1,
+        ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
+    )
+    cbar.ax.set_yticklabels(["$-\\pi$", "$\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
 
     # show and save
     plt.tight_layout()
