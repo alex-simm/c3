@@ -1028,7 +1028,10 @@ class LO(Device):
         freq_noise = self.freq_noise
         components = instr.comps
         for comp in components[chan].values():
-            if isinstance(comp, Carrier) and comp.name == f"carrier{self.lo_index}":
+            if (
+                    isinstance(comp, Carrier)
+                    and comp.name == f"carrier_{chan}_{self.lo_index}"
+            ):
                 cos, sin = [], []
                 omega_lo = comp.params["freq"].get_value()
                 if amp_noise and freq_noise:

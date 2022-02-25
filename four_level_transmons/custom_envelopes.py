@@ -21,7 +21,6 @@ def createNoDriveEnvelope(t_final: float) -> pulse.Envelope:
 def createGaussianPulse(
         t_final: float,
         sigma: float,
-        sideband: float = 50e6,
         amp: float = 0.5,
         delta: float = -1,
         xy_angle: float = 0.0,
@@ -30,7 +29,6 @@ def createGaussianPulse(
     """
     Creates a Gaussian pulse.
     """
-    freq_off += sideband
     return pulse.Envelope(
         name="gauss",
         desc="Gaussian envelope",
