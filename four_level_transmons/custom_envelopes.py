@@ -38,7 +38,7 @@ def createGaussianPulse(
                 value=t_final, min_val=0.8 * t_final, max_val=1.2 * t_final, unit="s"
             ),
             "sigma": Quantity(
-                value=sigma, min_val=0.5 * sigma, max_val=2 * sigma, unit="s"
+                value=sigma, min_val=0.5 * sigma, max_val=1.2 * sigma, unit="s"
             ),
             "xy_angle": Quantity(
                 value=xy_angle, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
@@ -79,34 +79,44 @@ def createDoubleGaussianPulse(t_final: float, sigma: float, sigma2: float, relat
 
 
 def createPWCPulse(
-    t_final: float,
     num_pieces: int,
     shape_fctn: Callable,
-    values: tf.Tensor = None,
+    t_final: float,
     amp: float = 0.5,
+    delta: float = -1,
+    xy_angle: float = 0.0,
+    freq_off: float = 0.5e6,
+    values: tf.Tensor = None,
 ) -> pulse.Envelope:
     """
     Creates a piece-wise constant envelope using the given shape function.
     """
     if values is None:
-        t = tf.linspace(0.0, t_final, num_pieces)
+        t = tf.linspace(
+            tf.convert_to_tensor(0.0, dtype=tf.float64),
+            tf.convert_to_tensor(t_final, dtype=tf.float64),
+            num_pieces,
+        )
         values = shape_fctn(t)
 
     return pulse.Envelope(
         name="pwc",
         desc="PWC envelope",
         params={
-            "amp": Quantity(value=amp, min_val=0.2, max_val=0.6, unit="V"),
+            "amp": Quantity(value=amp, min_val=0.5 * amp, max_val=1.5 * amp, unit="V"),
             "t_final": Quantity(
                 value=t_final, min_val=0.9 * t_final, max_val=1.1 * t_final, unit="s"
             ),
             "xy_angle": Quantity(
-                value=0.0, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
+                value=xy_angle, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
             ),
             "freq_offset": Quantity(
-                value=-53e6, min_val=-56e6, max_val=-52e6, unit="Hz 2pi"
+                value=-freq_off,
+                min_val=-1.2 * freq_off,
+                max_val=-0.9 * freq_off,
+                unit="Hz 2pi",
             ),
-            "delta": Quantity(value=-1, min_val=-5, max_val=5, unit=""),
+            "delta": Quantity(value=delta, min_val=-5, max_val=5, unit=""),
             "t_bin_start": Quantity(0),
             "t_bin_end": Quantity(t_final),
             "inphase": Quantity(values),
@@ -116,19 +126,29 @@ def createPWCPulse(
 
 
 def createPWCGaussianPulse(
-    t_final: float, sigma: float, num_pieces: int, values: tf.Tensor = None
+    num_pieces: int,
+    t_final: float,
+    sigma: float,
+    amp: float = 0.5,
+    delta: float = -1,
+    xy_angle: float = 0.0,
+    freq_off: float = 0.5e6,
 ) -> pulse.Envelope:
     """
     Creates a piece-wise constant Gaussian pulse.
     """
     return createPWCPulse(
-        t_final,
         num_pieces,
         lambda t: tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2)),
-        values,
+        t_final,
+        amp,
+        delta,
+        xy_angle,
+        freq_off,
     )
 
 
+'''
 def createPWCDoubleGaussianPulse(
     t_final: float,
     sigma: float,
@@ -140,11 +160,12 @@ def createPWCDoubleGaussianPulse(
     Creates a piece-wise constant superposition of two Gaussian pulses.
     """
     return createPWCPulse(
-        t_final,
         num_pieces,
         lambda t: tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2))
         - tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma2 ** 2)) * relative_amp,
+        t_final
     )
+'''
 
 
 def createPWCConstantPulse(
@@ -153,4 +174,22 @@ def createPWCConstantPulse(
     """
     Creates a piece-wise constant envelope initialised to constant values of 0.5.
     """
-    return createPWCPulse(t_final, num_pieces, lambda t: value * np.ones(len(t)))
+    return createPWCPulse(
+        num_pieces, lambda t: value * np.ones(len(t)), t_final=t_final
+    )
+
+
+def convertToPWC(envelope: pulse.Envelope, numPieces: int) -> pulse.Envelope:
+    params = envelope.params
+    # ts = tf.convert_to_tensor(np.linspace(0, params["t_final"], numPieces))
+    # values = envelope.get_shape_values(ts)
+
+    return createPWCPulse(
+        numPieces,
+        shape_fctn=envelope.get_shape_values,
+        t_final=params["t_final"].get_value(),
+        amp=params["amp"].get_value(),
+        delta=params["delta"].get_value(),
+        xy_angle=params["xy_angle"].get_value(),
+        freq_off=-params["freq_offset"].get_value(),
+    )

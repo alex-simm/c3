@@ -481,7 +481,7 @@ def gaussian_nonorm(t, params):
 
     """
     # TODO Add zeroes for t>t_final
-    t_final = tf.cast(params["t_final"].get_value(), tf.float64)
+    t_final = tf.cast(params["t_final"].get_value(), t.dtype)
     sigma = params["sigma"].get_value()
     gauss = tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma**2))
     return tf_complexify(gauss)
