@@ -1,7 +1,6 @@
 from typing import List, Tuple
 import numpy as np
 from matplotlib import pyplot as plt, colors, cm, lines
-import plotly.graph_objects as go
 
 from four_level_transmons.utilities import getQubitsPopulation
 from c3.experiment import Experiment
@@ -536,7 +535,6 @@ def plotPopulation(
     population: np.array,
     sequence: List[str],
     labels: List[str] = None,
-    usePlotly=False,
     vertical_lines=False,
     filename: str = None,
 ):
@@ -552,8 +550,6 @@ def plotPopulation(
         List of gate names that will be applied to the state
     labels: List[str]
         Optional list of names for the levels. If none, the default list from the experiment will be used.
-    usePlotly: bool
-        Whether to use Plotly or Matplotlib
     vertical_lines: bool
         If true, this add a dotted vertical line after each gate
     filename: str
@@ -572,64 +568,40 @@ def plotPopulation(
     labelY = "Population"
 
     # create the plot
-    if usePlotly:
-        fig = go.Figure()
-        for i in range(len(population.T[0])):
-            fig.add_trace(
-                go.Scatter(
-                    x=ts / 1e-9,
-                    y=population.T[:, i],
-                    mode="lines",
-                    name=str(legend_labels[i]),
-                )
-            )
-        fig.update_layout(xaxis_title=labelX, yaxis_title=labelY)
-    else:
-        fig, axs = plt.subplots(1, 1, figsize=[8, 5])
-        axs.plot(ts / 1e-9, population.T)
+    fig, axs = plt.subplots(1, 1, figsize=[8, 5])
+    axs.plot(ts / 1e-9, population.T)
 
-        # set plot properties
-        axs.tick_params(direction="in", left=True, right=True, top=False, bottom=True)
-        axs.set_xlabel(labelX)
-        axs.set_ylabel(labelY)
-        plt.legend(
-            legend_labels,
-            ncol=int(np.ceil(model.tot_dim / 15)),
-            bbox_to_anchor=(1.05, 1.0),
-            loc="upper left",
-        )
-        plt.tight_layout()
+    # set plot properties
+    axs.tick_params(direction="in", left=True, right=True, top=False, bottom=True)
+    axs.set_xlabel(labelX)
+    axs.set_ylabel(labelY)
+    plt.legend(
+        legend_labels,
+        ncol=int(np.ceil(model.tot_dim / 15)),
+        bbox_to_anchor=(1.05, 1.0),
+        loc="upper left",
+    )
+    plt.tight_layout()
 
-    # plot vertical lines; TODO: does not work with Plotly yet!
-    if (not usePlotly) and vertical_lines and len(sequence) > 0:
+    # plot vertical lines
+    if vertical_lines and len(sequence) > 0:
         gate_steps = [exp.partial_propagators[g].shape[0] for g in sequence]
         for i in range(1, len(gate_steps)):
             gate_steps[i] += gate_steps[i - 1]
         gate_times = gate_steps * dt
-        if usePlotly:
-            for t in gate_times:
-                fig.add_vline(
-                    x=t / 1e-9, line_width=1, line_dash="dot", line_color="black"
-                )
-        else:
-            plt.vlines(
-                x=gate_times / 1e-9,
-                ymin=tf.reduce_min(population),
-                ymax=tf.reduce_max(population),
-                linestyles=":",
-                colors="black",
-            )
+        plt.vlines(
+            x=gate_times / 1e-9,
+            ymin=tf.reduce_min(population),
+            ymax=tf.reduce_max(population),
+            linestyles=":",
+            colors="black",
+        )
 
     # show and save
-    if usePlotly:
-        if filename:
-            fig.write_image(filename)
-        fig.show()
-    else:
-        if filename:
-            plt.savefig(filename, bbox_inches="tight", dpi=100)
-            plt.close()
-        plt.show()
+    if filename:
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
+        plt.close()
+    plt.show()
 
 
 def plotSplittedPopulation(
