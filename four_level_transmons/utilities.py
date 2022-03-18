@@ -848,3 +848,14 @@ def partialTrace(M: np.ndarray, qubitsToKeep) -> np.ndarray:
     if numQubitsLeft > 1:
         Mres = np.reshape(Mres, [2 ** numQubitsLeft] * 2)
     return Mres
+
+
+def densityMatrix(state: np.array):
+    return np.outer(state, np.conjugate(state))
+
+
+def entanglementEntropy(rho: np.array):
+    vals = np.linalg.eigvalsh(rho.data)
+    nzvals = vals[np.where(vals > 1e-15)]
+    logvals = np.log2(nzvals)
+    return -np.sum(nzvals * logvals)
