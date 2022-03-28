@@ -44,9 +44,9 @@ def createGaussianPulse(
                 value=xy_angle, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
             ),
             "freq_offset": Quantity(
-                value=-freq_off,
-                min_val=-1.2 * freq_off,
-                max_val=-0.9 * freq_off,
+                value=freq_off,
+                min_val=min(0.8 * freq_off, 1.2 * freq_off),
+                max_val=max(0.8 * freq_off, 1.2 * freq_off),
                 unit="Hz 2pi",
             ),
             "delta": Quantity(value=delta, min_val=-5, max_val=5, unit=""),
