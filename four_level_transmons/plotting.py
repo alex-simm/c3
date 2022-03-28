@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import numpy as np
 from matplotlib import pyplot as plt, colors, cm, lines
 
@@ -138,6 +138,7 @@ def plotSignalAndSpectrum(
         spectralThreshold: float = 1e-4,
         min_signal_limit=0.2e9,
         filename=None,
+        states: Dict[float, str] = None,
 ):
     """
     Plots a time dependent drive signal and its frequency spectrum.
@@ -182,7 +183,11 @@ def plotSignalAndSpectrum(
         min_signal_limit=min_signal_limit,
     )
     drawSpectrum(
-        ax[1], time, signal=spectrumSignal, spectralThreshold=spectralThreshold
+        ax[1],
+        time,
+        signal=spectrumSignal,
+        spectralThreshold=spectralThreshold,
+        states=states,
     )
 
     # show and save
@@ -232,7 +237,11 @@ def drawSignal(
 
 
 def drawSpectrum(
-        axes: plt.Axes, time: np.array, signal: np.array, spectralThreshold: float = 1e-4
+        axes: plt.Axes,
+        time: np.array,
+        signal: np.array,
+        spectralThreshold: float = 1e-4,
+        states: Dict[float, str] = None,
 ):
     """
     Draws the frequency spectrum of a time signal into an Axes object.
@@ -260,14 +269,44 @@ def drawSpectrum(
     axes.set_xlabel("frequency")
     axes.legend()
 
+    # add vertical lines for transition frequencies
+    x_bounds = axes.get_xlim()
+    if states is not None:
+        # only transitions within a range
+        inRange = {k: v for k, v in states.items() if x_bounds[0] < k < x_bounds[1]}
+        energies = np.array(list(inRange.keys()))
+        labels = np.array(list(inRange.values()))
+
+        # binned transitions within the range
+        bins = np.linspace(x_bounds[0], x_bounds[1], 15)
+        digitised = np.digitize(energies, bins)
+        binnedEnergies = [energies[digitised == i] for i in range(1, len(bins))]
+        binnedLabels = [labels[digitised == i] for i in range(1, len(bins))]
+
+        for E in energies:
+            axes.vlines(E, 1.0, 1.1, colors=["black"], linestyles="-")
+
+        for i in range(len(binnedLabels)):
+            if len(binnedLabels[i]) > 0:
+                label = " / ".join(list(binnedLabels[i]))
+                mean = np.array(binnedEnergies[i]).mean()
+                axes.annotate(
+                    text=label,
+                    xy=((mean - x_bounds[0]) / (x_bounds[1] - x_bounds[0]), 1.01),
+                    xycoords="axes fraction",
+                    verticalalignment="bottom",
+                    horizontalalignment="right",
+                    rotation=270,
+                )
+
 
 def plotComplexMatrix(
-    M: np.array,
-    colourMap: str = "nipy_spectral",
-    xlabels: List[str] = None,
-    ylabels: List[str] = None,
-    zlimits: Tuple[int, int] = (0, 1),
-    filename: str = None,
+        M: np.array,
+        colourMap: str = "nipy_spectral",
+        xlabels: List[str] = None,
+        ylabels: List[str] = None,
+        zlimits: Tuple[int, int] = (0, 1),
+        filename: str = None,
 ):
     """
     Plots a complex matrix as a 3d bar plot, where the radius is the bar height and the phase defines
