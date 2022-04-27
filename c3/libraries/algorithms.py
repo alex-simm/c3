@@ -447,7 +447,7 @@ def lbfgs_grad_free(x_init, fun=None, fun_grad=None, grad_lookup=None, options={
     Result
         Scipy result object.
     """
-    return minimize(fun=fun, x0=x_init, options=options)
+    return minimize(fun=fun, x0=x_init, method="L-BFGS-B", options=options)
 
 
 @algo_reg_deco
