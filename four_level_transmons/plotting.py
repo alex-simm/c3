@@ -135,10 +135,10 @@ def plotSignalAndSpectrum(
         imag=None,
         envelope=None,
         pwcTimes=None,
-        spectralThreshold: float = 1e-4,
+        spectralThreshold: float = 1e-5,
         min_signal_limit=0.2e9,
         filename=None,
-        states: Dict[float, str] = None,
+        states: List[Tuple[float, str]] = None,
 ):
     """
     Plots a time dependent drive signal and its frequency spectrum.
@@ -241,7 +241,7 @@ def drawSpectrum(
         time: np.array,
         signal: np.array,
         spectralThreshold: float = 1e-4,
-        states: Dict[float, str] = None,
+        states: List[Tuple[float, str]] = None,
 ):
     """
     Draws the frequency spectrum of a time signal into an Axes object.
@@ -273,9 +273,9 @@ def drawSpectrum(
     x_bounds = axes.get_xlim()
     if states is not None:
         # only transitions within a range
-        inRange = {k: v for k, v in states.items() if x_bounds[0] < k < x_bounds[1]}
-        energies = np.array(list(inRange.keys()))
-        labels = np.array(list(inRange.values()))
+        inRange = [s for s in states if x_bounds[0] < s[0] < x_bounds[1]]
+        energies = np.array([s[0] for s in inRange])
+        labels = np.array([s[1] for s in inRange])
 
         # binned transitions within the range
         bins = np.linspace(x_bounds[0], x_bounds[1], 15)
@@ -570,12 +570,14 @@ def plotComplexMatrixHinton(
 
 
 def plotPopulation(
-    exp: Experiment,
-    population: np.array,
-    sequence: List[str],
-    labels: List[str] = None,
-    vertical_lines=False,
-    filename: str = None,
+        exp: Experiment,
+        population: np.array,
+        sequence: List[str],
+        labels: List[str] = None,
+        vertical_lines=False,
+        filename: str = None,
+        labelX: str = "Time [ns]",
+        labelY: str = "Population"
 ):
     """
     Plots time dependent populations. They need to be calculated with `runTimeEvolution` first.
@@ -603,8 +605,6 @@ def plotPopulation(
     ts = np.linspace(0.0, dt * population.shape[1], population.shape[1])
 
     legend_labels = labels if labels else model.state_labels
-    labelX = "Time [ns]"
-    labelY = "Population"
 
     # create the plot
     fig, axs = plt.subplots(1, 1, figsize=[8, 5])
@@ -643,10 +643,74 @@ def plotPopulation(
     plt.show()
 
 
+def plotObservable(
+        exp: Experiment,
+        values: np.array,
+        sequence: List[str],
+        name: str,
+        vertical_lines=False,
+        filename: str = None,
+):
+    """
+    Plots time dependent values of an observable. They need to be calculated with `runTimeEvolution` first.
+    Parameters
+    ----------
+    exp: Experiment
+        The experiment containing the model and propagators
+    population: np.array
+        The population
+    sequence: List[str]
+        List of gate names that will be applied to the state
+    labels: List[str]
+        Optional list of names for the levels. If none, the default list from the experiment will be used.
+    vertical_lines: bool
+        If true, this add a dotted vertical line after each gate
+    filename: str
+        Optional name of the file to which the plot will be saved. If none,
+        it will only be shown.
+    """
+    # calculate the time dependent level population
+    model = exp.pmap.model
+
+    # timestamps
+    dt = exp.ts[1] - exp.ts[0]
+    ts = np.linspace(0.0, dt * values.shape[0], values.shape[0])
+
+    # create the plot
+    fig, axs = plt.subplots(1, 1, figsize=[8, 5])
+    axs.plot(ts / 1e-9, values)
+
+    # set plot properties
+    axs.tick_params(direction="in", left=True, right=True, top=False, bottom=True)
+    axs.set_xlabel("Time [ns]")
+    axs.set_ylabel(name)
+    plt.tight_layout()
+
+    # plot vertical lines
+    if vertical_lines and len(sequence) > 0:
+        gate_steps = [exp.partial_propagators[g].shape[0] for g in sequence]
+        for i in range(1, len(gate_steps)):
+            gate_steps[i] += gate_steps[i - 1]
+        gate_times = gate_steps * dt
+        plt.vlines(
+            x=gate_times / 1e-9,
+            ymin=tf.reduce_min(values),
+            ymax=tf.reduce_max(values),
+            linestyles=":",
+            colors="black",
+        )
+
+    # show and save
+    if filename:
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
+        plt.close()
+    plt.show()
+
+
 def plotSplittedPopulation(
-    exp: Experiment,
-    population: np.array,
-    sequence: List[str],
+        exp: Experiment,
+        population: np.array,
+        sequence: List[str],
     vertical_lines=False,
     filename: str = None,
 ) -> None:

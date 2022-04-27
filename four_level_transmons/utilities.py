@@ -1,5 +1,5 @@
 import itertools
-from typing import List, Tuple, cast, Dict
+from typing import List, Tuple, cast, Dict, Callable
 import numpy as np
 import tensorflow as tf
 import copy
@@ -779,13 +779,48 @@ def calculatePopulation(
     # calculate the time dependent level population
     model = exp.pmap.model
     dUs = exp.partial_propagators
-    psi_t = psi_init.numpy()
+    if type(psi_init).__module__ != 'numpy':
+        psi_init = psi_init.numpy()
+    psi_t = psi_init
     pop_t = exp.populations(psi_t, model.lindbladian)
     for gate in sequence:
         for du in dUs[gate]:
             psi_t = np.matmul(du, psi_t)
             pops = exp.populations(psi_t, model.lindbladian)
             pop_t = np.append(pop_t, pops, axis=1)
+    return pop_t
+
+
+def calculateObservable(
+        exp: Experiment, psi_init, sequence: List[str], function: Callable
+) -> np.array:
+    """
+    Calculates the value of a state dependent function during time evolution starting from a specific initial state.
+
+    Parameters
+    ----------
+    exp: Experiment
+        The experiment containing the model and propagators
+    psi_init: tf.Tensor
+        Initial state vector
+    sequence: List[str]
+        List of gate names that will be applied to the state
+
+    Returns
+    -------
+    np.array
+       two-dimensional array, first dimension: time, second dimension: entropy
+    """
+    # calculate the time dependent level population
+    dUs = exp.partial_propagators
+    if type(psi_init).__module__ != 'numpy':
+        psi_init = psi_init.numpy()
+    psi_t = psi_init
+    pop_t = np.array([function(psi_t)])
+    for gate in sequence:
+        for idx, du in enumerate(dUs[gate]):
+            psi_t = np.matmul(du, psi_t)
+            pop_t = np.append(pop_t, function(psi_t))
     return pop_t
 
 
@@ -850,8 +885,32 @@ def partialTrace(M: np.ndarray, qubitsToKeep) -> np.ndarray:
     return Mres
 
 
+def partialTraceTF(tensor: tf.Tensor, keep_indices: List[int]) -> tf.Tensor:
+    numQubits = int(np.log2(tensor.shape[0]))
+    M = tf.reshape(tensor, shape=[2, 2] * numQubits)
+    ndim = M.ndim // 2
+
+    keep_set = set(keep_indices)
+    keep_map = dict(zip(keep_indices, sorted(keep_indices)))
+    left_indices = [keep_map[i] if i in keep_set else i for i in range(ndim)]
+    right_indices = [ndim + i if i in keep_set else i for i in left_indices]
+    single_indices = [i for i in left_indices if i not in right_indices] \
+                     + [i for i in right_indices if i not in left_indices]
+
+    letters = np.array(['i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't'])
+    equation = ''.join(letters[left_indices + right_indices])
+    equation += '->' + ''.join(letters[single_indices])
+    rhoPartial = tf.einsum(equation, M)
+
+    return tf.reshape(rhoPartial, [2 ** len(keep_indices)] * 2)
+
+
 def densityMatrix(state: np.array):
     return np.outer(state, np.conjugate(state))
+
+
+def densityMatrixTF(state: tf.Tensor):
+    return tf.tensordot(state, tf.math.conj(state), axes=0)
 
 
 def entanglementEntropy(rho: np.array):
@@ -859,3 +918,10 @@ def entanglementEntropy(rho: np.array):
     nzvals = vals[np.where(vals > 1e-15)]
     logvals = np.log2(nzvals)
     return -np.sum(nzvals * logvals)
+
+
+def entanglementEntropyTF(rho: tf.Tensor):
+    vals = tf.cast(tf.math.real(tf.linalg.eigvalsh(rho)), tf.float64)
+    nzvals = vals[tf.math.greater(vals, tf.ones_like(vals) * 1e-15)]
+    logvals = tf.math.log(nzvals) / tf.cast(tf.math.log(2.0), tf.float64)
+    return -tf.reduce_sum(nzvals * logvals)
