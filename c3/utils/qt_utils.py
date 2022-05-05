@@ -186,7 +186,7 @@ def projector(dims, indices, outdims=None):
     ids = []
     for index, dim in enumerate(dims):
         outdim = outdims[index]
-        if index in indices:
+        if index in indices and outdim > 0:
             ids.append(np.eye(dim, outdim))
         else:
             ids.append(np.eye(dim, 1))
