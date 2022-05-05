@@ -203,6 +203,7 @@ class Generator:
                 # collect inputs
                 sources = self.chains[chan][dev_id]
                 inputs = [signal_stack[chan][x] for x in sources]
+                print(dev_id, "inputs: ", len(inputs))
 
                 # calculate the output and store it in the stack
                 dev = self.devices[dev_id]

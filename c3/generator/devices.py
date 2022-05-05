@@ -866,7 +866,7 @@ class RealMixer(Device):
         self.inputs = props.pop("inputs", 2)
         self.outputs = props.pop("outputs", 1)
 
-    def process(self, instr: Instruction, chan: str, in1: dict, in2: dict):
+    def process(self, instr: Instruction, chan: str, inputs: List[Dict[str, Any]]):
         """Combine signal from AWG and LO.
 
         Parameters
@@ -881,7 +881,10 @@ class RealMixer(Device):
         dict
             Mixed signal.
         """
-        self.signal = {"values": (in1["values"] + in2["values"]) / 2.0, "ts": in1["ts"]}
+        values = tf.zeros_like(inputs[0]["values"])
+        for ip in inputs:
+            values += ip["values"]
+        self.signal = {"values": values / float(len(inputs)), "ts": inputs[0]["ts"]}
         return self.signal
 
 
