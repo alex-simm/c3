@@ -48,6 +48,7 @@ class Generator:
         self.set_chains(chains)
         self.resolution = resolution
         self.callback = callback
+        self.global_signal_stack: Dict[str, tf.constant] = {}
 
     def set_chains(self, chains: Dict[str, Dict[str, List[str]]]):
         if chains:
@@ -187,9 +188,11 @@ class Generator:
         """
         gen_signal: Dict[str, Dict[str, tf.constant]] = {}
         signal_stack: Dict[str, Dict[str, tf.constant]] = {}
+        self.global_signal_stack = {}
         for chan in instr.comps:
             chain = self.chains[chan]
             signal_stack[chan] = {}
+            self.global_signal_stack[chan] = {}
 
             # create list of succeeding devices
             successors = {}
@@ -205,6 +208,7 @@ class Generator:
                 dev = self.devices[dev_id]
                 output = dev.process(instr, chan, inputs)
                 signal_stack[chan][dev_id] = output
+                self.global_signal_stack[chan][dev_id] = output
 
                 # remove inputs if they are not needed anymore
                 # for source in sources:
@@ -229,7 +233,7 @@ class Generator:
         return gen_signal
 
     def getDeviceOutput(self, channel: str, deviceId: str):
-        for key, value in self.gen_stacked_signals[channel]:
+        for key, value in self.global_signal_stack[channel].items():
             if key == deviceId:
                 return value
         return None

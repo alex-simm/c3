@@ -297,7 +297,14 @@ def createGenerator(
     -------
     Generator
     """
-    chain = ["LO", "AWG", "DigitalToAnalog", "Response", "Mixer", "VoltsToHertz"]
+    chain = {
+        "LO": [],
+        "AWG": [],
+        "DigitalToAnalog": ["AWG"],
+        "Response": ["DigitalToAnalog"],
+        "Mixer": ["LO", "Response"],
+        "VoltsToHertz": ["Mixer"],
+    }
     chains = {f"{d.name}": chain for d in drives}
 
     generator = Generator(
