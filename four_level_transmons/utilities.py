@@ -925,3 +925,20 @@ def entanglementEntropyTF(rho: tf.Tensor):
     nzvals = vals[tf.math.greater(vals, tf.ones_like(vals) * 1e-15)]
     logvals = tf.math.log(nzvals) / tf.cast(tf.math.log(2.0), tf.float64)
     return -tf.reduce_sum(nzvals * logvals)
+
+
+def scaleQuantity(q: Qty, factor: float) -> Qty:
+    return Qty(value=q.get_value() * factor, min_val=q.get_limits()[0] * factor, max_val=q.get_limits()[1] * factor,
+               unit=q.unit)
+
+
+def scaleGaussianEnvelope(envelope: pulse.Envelope, factor: float) -> pulse.Envelope:
+    """
+    Scales a gaussian envelope such that the integrated area stays constant. The final time and sigma
+    are multiplied by the factor, the amplitude is divided by it.
+    -------
+    """
+    envelope.params['amp'] = scaleQuantity(envelope.params['amp'], 1.0 / factor)
+    envelope.params['t_final'] = scaleQuantity(envelope.params['t_final'], factor)
+    envelope.params['sigma'] = scaleQuantity(envelope.params['sigma'], factor)
+    return envelope
