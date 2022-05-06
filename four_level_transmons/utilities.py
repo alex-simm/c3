@@ -301,8 +301,8 @@ def createGenerator(
         "LO": [],
         "AWG": [],
         "DigitalToAnalog": ["AWG"],
-        "Response": ["DigitalToAnalog"],
-        "Mixer": ["LO", "Response"],
+        "ResponseFFT": ["DigitalToAnalog"],
+        "Mixer": ["LO", "ResponseFFT"],
         "VoltsToHertz": ["Mixer"],
     }
     chains = {f"{d.name}": chain for d in drives}
@@ -314,7 +314,7 @@ def createGenerator(
             "DigitalToAnalog": devices.DigitalToAnalog(
                 name="dac", resolution=sim_res, inputs=1, outputs=1
             ),
-            "Response": devices.Response(
+            "ResponseFFT": devices.ResponseFFT(
                 name="resp",
                 rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
                 resolution=sim_res,
@@ -370,10 +370,10 @@ def createGenerator2LOs(
         "AWG2": [],
         "DigitalToAnalog1": ["AWG1"],
         "DigitalToAnalog2": ["AWG2"],
-        "Response1": ["DigitalToAnalog1"],
-        "Response2": ["DigitalToAnalog2"],
-        "Mixer1": ["LO1", "Response1"],
-        "Mixer2": ["LO2", "Response2"],
+        "ResponseFFT1": ["DigitalToAnalog1"],
+        "ResponseFFT2": ["DigitalToAnalog2"],
+        "Mixer1": ["LO1", "ResponseFFT1"],
+        "Mixer2": ["LO2", "ResponseFFT2"],
         "RealMixer": ["Mixer1", "Mixer2"],
         "VoltsToHertz": ["RealMixer"],
     }
@@ -395,14 +395,14 @@ def createGenerator2LOs(
             "DigitalToAnalog2": devices.DigitalToAnalog(
                 name="dac2", resolution=sim_res, inputs=1, outputs=1
             ),
-            "Response1": devices.Response(
+            "ResponseFFT1": devices.ResponseFFT(
                 name="resp1",
                 rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
                 resolution=sim_res,
                 inputs=1,
                 outputs=1,
             ),
-            "Response2": devices.Response(
+            "ResponseFFT2": devices.ResponseFFT(
                 name="resp2",
                 rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
                 resolution=sim_res,
@@ -463,8 +463,8 @@ def createGeneratorNLOs(
         chain[f"LO{n}"] = []
         chain[f"AWG{n}"] = []
         chain[f"DigitalToAnalog{n}"] = [f"AWG{n}"]
-        chain[f"Response{n}"] = [f"DigitalToAnalog{n}"]
-        chain[f"Mixer{n}"] = [f"LO{n}", f"Response{n}"]
+        chain[f"ResponseFFT{n}"] = [f"DigitalToAnalog{n}"]
+        chain[f"Mixer{n}"] = [f"LO{n}", f"ResponseFFT{n}"]
     chain["RealMixer"] = [f"Mixer{n}" for n in range(1, N + 1)]
     chain["VoltsToHertz"] = ["RealMixer"]
     chains = {f"{d.name}": chain for d in drives}
@@ -481,7 +481,7 @@ def createGeneratorNLOs(
         devs[f"DigitalToAnalog{n}"] = devices.DigitalToAnalog(
             name=f"dac{n}", resolution=sim_res, inputs=1, outputs=1
         )
-        devs[f"Response{n}"] = devices.Response(
+        devs[f"ResponseFFT{n}"] = devices.ResponseFFT(
             name=f"resp{n}",
             rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
             resolution=sim_res,
@@ -710,7 +710,7 @@ def getOutputFromDevice(
 def getEnvelope(gen: Generator, gate: gates.Instruction, channel: str):
     full_signal = gen.generate_signals(gate)[channel]
     values1 = full_signal["values"].numpy()
-    envelope = gen.getDeviceOutput(channel, "Response")
+    envelope = gen.getDeviceOutput(channel, "ResponseFFT")
     values2 = envelope["inphase"].numpy()
     # TODO: this isn't good!
     if np.max(np.abs(values2)) != 0:
