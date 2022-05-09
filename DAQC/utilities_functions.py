@@ -89,6 +89,80 @@ def createQubits(
 
     return qubits
 
+def createCouplers(
+    coupler_names: List[str],
+    coupler_levels_list: List[int],
+    freq_list: List[float],
+    anharm_list: List[float],
+    t1_list: List[float],
+    t2star_list: List[float],
+    phi_list: List[float],
+    phi0_list: List[float],
+    d_list: List[float],
+    coupler_temp: float,
+) -> List[chip.Transmon]:
+    """
+    Creates and returns a list of couplers.
+
+    Parameters
+    ----------
+    coupler_names: List[str]
+        List of names of each coupler.
+    coupler_levels_list: List[int]
+        List of number of levels in each coupler.
+    freq_list: List[Float]
+        List of frequency of each coupler.
+    anharm_list: List[Float]
+        List of anharmonicity of each coupler.
+    t1_list: List[Float]
+        List of T1 values for each coupler.
+    t2star_list: List[Float]
+        List of T2* values for each coupler.
+    phi_list: List[Float]
+        List of current flux values for each coupler.
+    phi0_list: List[Float]
+        List of flux bias for each coupler.
+    d_list: List[Float]
+        List of junction asymmetry values for each coupler.
+    coupler_temp: Float
+        Temperature of the couplers
+
+    Returns
+    -------
+    couplers: List[chip.Transmon]
+        An list of transmons
+    """
+
+    couplers = []
+    for i in range(len(coupler_levels_list)):
+        couplers.append(
+            chip.Transmon(
+                name=coupler_names[i],
+                desc=f"Coupler {i + 1}",
+                freq=Qty(
+                    value=freq_list[i],
+                    min_val=freq_list[i] - 5e6,
+                    max_val=freq_list[i] + 5e6,
+                    unit="Hz 2pi",
+                ),
+                anhar=Qty(
+                    value=anharm_list[i], min_val=-380e6, max_val=-20e6, unit="Hz 2pi"
+                ),
+                hilbert_dim=coupler_levels_list[i],
+                t1=Qty(value=t1_list[i], min_val=1e-6, max_val=90e-6, unit="s"),
+                t2star=Qty(
+                    value=t2star_list[i], min_val=1e-6, max_val=90e-6, unit="s"
+                ),
+                temp=Qty(value=coupler_temp, min_val=0.0, max_val=0.12, unit="K"),
+                phi=Qty(value=phi_list[i], max_val=5.0, min_val=0.0, unit="Wb"),
+                phi_0=Qty(value=phi0_list[i], max_val=11.0, min_val=9.0, unit="Wb"),
+                d=Qty(value=d_list[i], max_val=0.1, min_val=-0.1, unit=""),
+            )
+        )
+
+    return couplers
+
+
 
 def createChainCouplings(
     coupling_strength: List[float],
@@ -238,7 +312,14 @@ def createGenerator(
     -------
     Generator
     """
-    chain = ["LO", "AWG", "DigitalToAnalog", "Response", "Mixer", "VoltsToHertz"]
+    chain = {
+                "LO": [],
+                "AWG": [],
+                "DigitalToAnalog": ["AWG"],
+                "Response": ["DigitalToAnalog"],
+                "Mixer": ["LO", "Response"],
+                "VoltsToHertz": ["Mixer"]
+            }
     chains = {f"{d.name}": chain for d in drives}
 
     generator = Gnr(
