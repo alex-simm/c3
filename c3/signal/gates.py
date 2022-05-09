@@ -55,6 +55,8 @@ class Instruction:
         # fixed_t_end: bool = True,
     ):
         self.set_name(name)
+        if ideal is not None:
+            self.set_ideal(ideal)
         self.targets = targets
         self.params: dict = {}
         if isinstance(params, dict):
