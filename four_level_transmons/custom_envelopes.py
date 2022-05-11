@@ -111,9 +111,9 @@ def createPWCPulse(
                 value=xy_angle, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
             ),
             "freq_offset": Quantity(
-                value=-freq_off,
-                min_val=-1.2 * freq_off,
-                max_val=-0.9 * freq_off,
+                value=freq_off,
+                min_val=0.9 * freq_off,
+                max_val=1.2 * freq_off,
                 unit="Hz 2pi",
             ),
             "delta": Quantity(value=delta, min_val=-5, max_val=5, unit=""),
@@ -191,5 +191,5 @@ def convertToPWC(envelope: pulse.Envelope, numPieces: int) -> pulse.Envelope:
         amp=params["amp"].get_value(),
         delta=params["delta"].get_value(),
         xy_angle=params["xy_angle"].get_value(),
-        freq_off=-params["freq_offset"].get_value(),
+        freq_off=params["freq_offset"].get_value(),
     )

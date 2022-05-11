@@ -278,6 +278,7 @@ def createGenerator(
         sim_res: float = 100e9,
         awg_res: float = 2e9,
         useDrag: bool = False,
+        usePWC: bool = False
 ) -> Generator:
     """
     Creates and returns the generator.
@@ -335,6 +336,9 @@ def createGenerator(
     if useDrag:
         print("enabling DRAG2")
         generator.devices["AWG"].enable_drag_2()
+    if usePWC:
+        print("enabling PWC in AWG")
+        generator.devices["AWG"].enable_pwc()
 
     return generator
 
@@ -344,6 +348,7 @@ def createGenerator2LOs(
         sim_res: float = 100e9,
         awg_res: float = 2e9,
         useDrag: bool = False,
+        usePWC: bool = False
 ) -> Generator:
     """
     Creates and returns the generator.
@@ -423,8 +428,13 @@ def createGenerator2LOs(
     )
 
     if useDrag:
+        print("enabling DRAG")
         generator.devices["AWG1"].enable_drag_2()
         generator.devices["AWG2"].enable_drag_2()
+    if usePWC:
+        print("enabling PWC in AWG")
+        generator.devices["AWG1"].enable_pwc()
+        generator.devices["AWG2"].enable_pwc()
 
     return generator
 
@@ -435,6 +445,7 @@ def createGeneratorNLOs(
         sim_res: float = 100e9,
         awg_res: float = 2e9,
         useDrag: bool = False,
+        usePWC: bool = False
 ) -> Generator:
     """
     Creates and returns the generator.
@@ -502,6 +513,10 @@ def createGeneratorNLOs(
         print("enabling DRAG2")
         for n in range(1, N + 1):
             generator.devices[f"AWG{n}"].enable_drag_2()
+    if usePWC:
+        print("enabling PWC in AWG")
+        for n in range(1, N + 1):
+            generator.devices[f"AWG{n}"].enable_pwc()
 
     return generator
 
