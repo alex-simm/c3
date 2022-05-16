@@ -35,7 +35,7 @@ def createGaussianPulse(
         params={
             "amp": Quantity(value=amp, min_val=0.5 * amp, max_val=1.5 * amp, unit="V"),
             "t_final": Quantity(
-                value=t_final, min_val=0.8 * t_final, max_val=1.2 * t_final, unit="s"
+                value=t_final, min_val=0.8 * t_final, max_val=t_final, unit="s"
             ),
             "sigma": Quantity(
                 value=sigma, min_val=0.5 * sigma, max_val=1.2 * sigma, unit="s"
@@ -120,6 +120,7 @@ def createPWCPulse(
             "t_bin_start": Quantity(0),
             "t_bin_end": Quantity(t_final),
             "inphase": Quantity(values),
+            "quadrature": Quantity(tf.zeros_like(values))
         },
         shape=envelopes.pwc_shape,
     )

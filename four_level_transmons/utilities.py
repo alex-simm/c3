@@ -544,7 +544,7 @@ def createCarriers(qubit_freqs: List[float], sideband: float) -> List[pulse.Carr
     for i in range(len(qubit_freqs)):
         f = qubit_freqs[i] + sideband
         carrier_parameters = {
-            "freq": Qty(value=f, min_val=0.8 * f, max_val=1.2 * f, unit="Hz 2pi"),
+            "freq": Qty(value=f, min_val=0.95 * f, max_val=1.02 * f, unit="Hz 2pi"),
             "framechange": Qty(
                 value=framechange, min_val=-np.pi, max_val=3 * np.pi, unit="rad"
             ),
