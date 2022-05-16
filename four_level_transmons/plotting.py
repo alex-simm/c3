@@ -1,3 +1,4 @@
+import string
 from typing import List, Tuple, Dict
 import numpy as np
 from matplotlib import pyplot as plt, colors, cm, lines
@@ -136,7 +137,7 @@ def plotSignalAndSpectrum(
         envelope=None,
         pwcTimes=None,
         spectralThreshold: float = 1e-5,
-        min_signal_limit=0.2e9,
+        min_signal_limit=None,
         filename=None,
         states: List[Tuple[float, str]] = None,
 ):
@@ -205,7 +206,7 @@ def drawSignal(
         imag=None,
         envelope=None,
         pwcTimes=None,
-        min_signal_limit=0.2e9,
+        min_signal_limit=None,
 ):
     """
     Draws real part, imaginary part, and absolute square of a complex signal into an Axes object.
@@ -258,9 +259,10 @@ def drawSpectrum(
     if spectralThreshold is not None:
         limits = np.flatnonzero(np.abs(normalised) ** 2 > spectralThreshold)
         if len(limits) > 1:
+            start = max(limits[0] - 1, 0)
             end = min(limits[-1] + 1, len(freq) - 1)
-            freq = freq[limits[0]: end]
-            normalised = normalised[limits[0]: end]
+            freq = freq[start: end]
+            normalised = normalised[start: end]
 
     # plot frequency domain
     axes.plot(freq, normalised.real, label="Re")
@@ -278,26 +280,42 @@ def drawSpectrum(
         labels = np.array([s[1] for s in inRange])
 
         # binned transitions within the range
-        bins = np.linspace(x_bounds[0], x_bounds[1], 15)
+        bins = np.linspace(x_bounds[0], x_bounds[1], 20)
         digitised = np.digitize(energies, bins)
         binnedEnergies = [energies[digitised == i] for i in range(1, len(bins))]
         binnedLabels = [labels[digitised == i] for i in range(1, len(bins))]
 
+        # a tick for each transition energy
         for E in energies:
             axes.vlines(E, 1.0, 1.1, colors=["black"], linestyles="-")
 
-        for i in range(len(binnedLabels)):
-            if len(binnedLabels[i]) > 0:
-                label = " / ".join(list(binnedLabels[i]))
-                mean = np.array(binnedEnergies[i]).mean()
-                axes.annotate(
-                    text=label,
-                    xy=((mean - x_bounds[0]) / (x_bounds[1] - x_bounds[0]), 1.01),
-                    xycoords="axes fraction",
-                    verticalalignment="bottom",
-                    horizontalalignment="right",
-                    rotation=270,
-                )
+        filtered = list(filter(lambda x: len(x[0]) > 0, zip(binnedLabels, binnedEnergies)))
+        letters = iter(list(string.ascii_uppercase))
+        for i in range(len(filtered)):
+            label = " / ".join(list(filtered[i][0]))
+            mean = np.array(filtered[i][1]).mean()
+            '''
+            # plot rotated transition labels above each tick 
+            axes.annotate(
+                text=label,
+                xy=((mean - x_bounds[0]) / (x_bounds[1] - x_bounds[0]), 1.01),
+                xycoords="axes fraction",
+                verticalalignment="bottom",
+                horizontalalignment="right",
+                rotation=270,
+            )
+            '''
+            # plot transition labels below the plot with a letter at each tick
+            letter = next(letters)
+            axes.annotate(
+                text=letter,
+                xy=((mean - x_bounds[0]) / (x_bounds[1] - x_bounds[0]), 1.01),
+                xycoords="axes fraction",
+                verticalalignment="bottom",
+                horizontalalignment="center"
+            )
+            axes.annotate(f"{letter}: {label}", (0, 0), (0, -40 - i * 10), xycoords='axes fraction',
+                          textcoords='offset points', va='top')
 
 
 def plotComplexMatrix(
