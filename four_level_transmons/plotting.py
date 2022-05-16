@@ -577,7 +577,7 @@ def plotComplexMatrixHinton(
         pad=0.1,
         ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
     )
-    cbar.ax.set_yticklabels(["$-\\pi$", "$\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
+    cbar.ax.set_yticklabels(["$-\\pi$", "$-\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
 
     # show and save
     plt.tight_layout()
