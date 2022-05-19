@@ -61,7 +61,7 @@ def createQubits(
                     unit="Hz 2pi",
                 ),
                 anhar=Qty(
-                    value=anharm_list[i], min_val=-380e6, max_val=-120e6, unit="Hz 2pi"
+                    value=anharm_list[i], min_val=1.5 * anharm_list[i], max_val=0.5 * anharm_list[i], unit="Hz 2pi"
                 ),
                 hilbert_dim=qubit_levels_list[i],
                 t1=Qty(value=t1_list[i], min_val=1e-6, max_val=90e-6, unit="s"),
@@ -137,9 +137,9 @@ def createTransmons(
                     value=t2star_list[i], min_val=10e-6, max_val=90e-6, unit="s"
                 ),
                 temp=Qty(value=qubit_temp, min_val=0.0, max_val=0.12, unit="K"),
-                phi=Qty(value=phi_list[i], max_val=5.0, min_val=0.0, unit="Wb"),
-                phi_0=Qty(value=phi0_list[i], max_val=11.0, min_val=9.0, unit="Wb"),
-                d=Qty(value=d_list[i], max_val=0.1, min_val=-0.1, unit=""),
+                phi=Qty(value=phi_list[i], max_val=5.0 * phi_list[i], min_val=-5.0 * phi_list[i], unit="Wb"),
+                phi_0=Qty(value=phi0_list[i], max_val=1.1 * phi0_list[i], min_val=0.9 * phi0_list[i], unit="Wb"),
+                d=Qty(value=d_list[i], max_val=1.1 * d_list[i], min_val=0.9 * d_list[i], unit=""),
             )
         )
 
@@ -245,7 +245,7 @@ def createChainCouplingsWithCouplers(
     return g_NN_array
 
 
-def createDrives(qubits: List[chip.Transmon]) -> List[chip.Drive]:
+def createDrives(qubits: List[chip.Transmon], fluxDrive=False) -> List[chip.Drive]:
     """
     Creates and returns a drive line for each qubit in the list.
 
@@ -260,14 +260,23 @@ def createDrives(qubits: List[chip.Transmon]) -> List[chip.Drive]:
         The drive lines in the same order as the list of qubits.
     """
     drives = []
+    if fluxDrive:
+        name = "flux"
+        comment = "Flux line on qubit"
+        hamiltonian = hamiltonians.z_drive
+    else:
+        name = "d"
+        comment = "Drive line on qubit"
+        hamiltonian = hamiltonians.x_drive
+
     for i in range(len(qubits)):
         drives.append(
             chip.Drive(
-                name=f"d{i + 1}",
+                name=f"{name}{i + 1}",
                 desc=f"Drive {i + 1}",
-                comment=f"Drive line on qubit {qubits[i].name}",
+                comment=f"{comment} {qubits[i].name}",
                 connected=[qubits[i].name],
-                hamiltonian_func=hamiltonians.x_drive,
+                hamiltonian_func=hamiltonian,
             )
         )
     return drives
