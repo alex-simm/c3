@@ -342,12 +342,14 @@ def createGenerator(
         chains=chains,
     )
 
+    '''
     if useDrag:
         print("enabling DRAG2")
         generator.devices["AWG"].enable_drag_2()
     if usePWC:
         print("enabling PWC in AWG")
         generator.devices["AWG"].enable_pwc()
+    '''
 
     return generator
 
@@ -436,6 +438,7 @@ def createGenerator2LOs(
         chains=chains,
     )
 
+    '''
     if useDrag:
         print("enabling DRAG")
         generator.devices["AWG1"].enable_drag_2()
@@ -444,6 +447,7 @@ def createGenerator2LOs(
         print("enabling PWC in AWG")
         generator.devices["AWG1"].enable_pwc()
         generator.devices["AWG2"].enable_pwc()
+    '''
 
     return generator
 
@@ -518,6 +522,7 @@ def createGeneratorNLOs(
     )
 
     generator = Generator(devices=devs, chains=chains)
+    '''
     if useDrag:
         print("enabling DRAG2")
         for n in range(1, N + 1):
@@ -526,6 +531,7 @@ def createGeneratorNLOs(
         print("enabling PWC in AWG")
         for n in range(1, N + 1):
             generator.devices[f"AWG{n}"].enable_pwc()
+    '''
 
     return generator
 

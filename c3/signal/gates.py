@@ -306,7 +306,7 @@ class Instruction:
             self.t_end = t_end
         self.t_end = float(t_end * (1 + buffer))
 
-    def get_awg_signal(self, chan, ts, awg_signal):
+    def get_awg_signal(self, chan, ts, awg_index):
         amp_tot_sq = 0
         signal = tf.zeros_like(ts, tf.complex128)
         self._timings = dict()

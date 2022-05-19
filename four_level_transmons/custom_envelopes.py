@@ -122,7 +122,7 @@ def createPWCPulse(
             "inphase": Quantity(values),
             "quadrature": Quantity(tf.zeros_like(values))
         },
-        shape=envelopes.pwc_shape,
+        shape=envelopes.pwc,
     )
 
 

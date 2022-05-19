@@ -19,10 +19,7 @@ class ParameterMap:
     """
 
     def __init__(
-            self,
-            instructions: List[Instruction] = [],
-            generator: Generator = None,
-            model=None,
+            self, instructions: List[Instruction] = [], generator=None, model=None
     ):
         self.instructions: Dict[str, Instruction] = dict()
         self.opt_map: List[List[Tuple[str]]] = list()
