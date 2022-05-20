@@ -285,9 +285,7 @@ def createDrives(qubits: List[chip.Transmon], fluxDrive=False) -> List[chip.Driv
 def createGenerator(
         drives: List[chip.Drive],
         sim_res: float = 100e9,
-        awg_res: float = 2e9,
-        useDrag: bool = False,
-        usePWC: bool = False
+        awg_res: float = 2e9
 ) -> Generator:
     """
     Creates and returns the generator.
@@ -300,8 +298,6 @@ def createGenerator(
         Resolution of the simulation
     awg_res: float
         Resolution of AWG
-    useDrag: bool
-        Whether to enable DRAG in the AWG
 
     Returns
     -------
@@ -317,7 +313,7 @@ def createGenerator(
     }
     chains = {f"{d.name}": chain for d in drives}
 
-    generator = Generator(
+    return Generator(
         devices={
             "LO": devices.LO(name="lo", lo_index=1, resolution=sim_res, outputs=1),
             "AWG": devices.AWG(name="awg", awg_index=1, resolution=awg_res, outputs=1),
@@ -342,24 +338,11 @@ def createGenerator(
         chains=chains,
     )
 
-    '''
-    if useDrag:
-        print("enabling DRAG2")
-        generator.devices["AWG"].enable_drag_2()
-    if usePWC:
-        print("enabling PWC in AWG")
-        generator.devices["AWG"].enable_pwc()
-    '''
-
-    return generator
-
 
 def createGenerator2LOs(
         drives: List[chip.Drive],
         sim_res: float = 100e9,
         awg_res: float = 2e9,
-        useDrag: bool = False,
-        usePWC: bool = False
 ) -> Generator:
     """
     Creates and returns the generator.
@@ -372,8 +355,6 @@ def createGenerator2LOs(
         Resolution of the simulation
     awg_res: float
         Resolution of AWG
-    useDrag: bool
-        Whether to enable DRAG in the AWG
 
     Returns
     -------
@@ -395,7 +376,7 @@ def createGenerator2LOs(
     }
     chains = {f"{d.name}": chain for d in drives}
 
-    generator = Generator(
+    return Generator(
         devices={
             "LO1": devices.LO(lo_index=1, name="lo1", resolution=sim_res, outputs=1),
             "LO2": devices.LO(lo_index=2, name="lo2", resolution=sim_res, outputs=1),
@@ -438,27 +419,12 @@ def createGenerator2LOs(
         chains=chains,
     )
 
-    '''
-    if useDrag:
-        print("enabling DRAG")
-        generator.devices["AWG1"].enable_drag_2()
-        generator.devices["AWG2"].enable_drag_2()
-    if usePWC:
-        print("enabling PWC in AWG")
-        generator.devices["AWG1"].enable_pwc()
-        generator.devices["AWG2"].enable_pwc()
-    '''
-
-    return generator
-
 
 def createGeneratorNLOs(
         drives: List[chip.Drive],
         N: int,
         sim_res: float = 100e9,
-        awg_res: float = 2e9,
-        useDrag: bool = False,
-        usePWC: bool = False
+        awg_res: float = 2e9
 ) -> Generator:
     """
     Creates and returns the generator.
@@ -473,8 +439,6 @@ def createGeneratorNLOs(
         Resolution of the simulation
     awg_res: float
         Resolution of AWG
-    useDrag: bool
-        Whether to enable DRAG in the AWG
 
     Returns
     -------
@@ -521,19 +485,7 @@ def createGeneratorNLOs(
         outputs=1,
     )
 
-    generator = Generator(devices=devs, chains=chains)
-    '''
-    if useDrag:
-        print("enabling DRAG2")
-        for n in range(1, N + 1):
-            generator.devices[f"AWG{n}"].enable_drag_2()
-    if usePWC:
-        print("enabling PWC in AWG")
-        for n in range(1, N + 1):
-            generator.devices[f"AWG{n}"].enable_pwc()
-    '''
-
-    return generator
+    return Generator(devices=devs, chains=chains)
 
 
 def createCarriers(qubit_freqs: List[float], sideband: float) -> List[pulse.Carrier]:

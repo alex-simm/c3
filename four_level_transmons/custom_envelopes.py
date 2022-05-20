@@ -25,34 +25,44 @@ def createGaussianPulse(
         delta: float = -1,
         xy_angle: float = 0.0,
         freq_off: float = 0.5e6,
+        useDrag=False,
 ) -> pulse.Envelope:
     """
     Creates a Gaussian pulse.
     """
-    return pulse.Envelope(
-        name="gauss",
-        desc="Gaussian envelope",
-        params={
-            "amp": Quantity(value=amp, min_val=0.5 * amp, max_val=1.5 * amp, unit="V"),
-            "t_final": Quantity(
-                value=t_final, min_val=0.8 * t_final, max_val=t_final, unit="s"
-            ),
-            "sigma": Quantity(
-                value=sigma, min_val=0.5 * sigma, max_val=1.2 * sigma, unit="s"
-            ),
-            "xy_angle": Quantity(
-                value=xy_angle, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
-            ),
-            "freq_offset": Quantity(
-                value=freq_off,
-                min_val=min(0.8 * freq_off, 1.2 * freq_off),
-                max_val=max(0.8 * freq_off, 1.2 * freq_off),
-                unit="Hz 2pi",
-            ),
-            "delta": Quantity(value=delta, min_val=-5, max_val=5, unit=""),
-        },
-        shape=envelopes.gaussian_nonorm,
-    )
+    params = {
+        "amp": Quantity(value=amp, min_val=0.5 * amp, max_val=1.5 * amp, unit="V"),
+        "t_final": Quantity(
+            value=t_final, min_val=0.8 * t_final, max_val=t_final, unit="s"
+        ),
+        "sigma": Quantity(
+            value=sigma, min_val=0.5 * sigma, max_val=1.2 * sigma, unit="s"
+        ),
+        "xy_angle": Quantity(
+            value=xy_angle, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
+        ),
+        "freq_offset": Quantity(
+            value=freq_off,
+            min_val=min(0.8 * freq_off, 1.2 * freq_off),
+            max_val=max(0.8 * freq_off, 1.2 * freq_off),
+            unit="Hz 2pi",
+        ),
+        "delta": Quantity(value=delta, min_val=-5, max_val=5, unit=""),
+    }
+    if useDrag:
+        return pulse.EnvelopeDrag(
+            name="gauss",
+            desc="Gaussian envelope",
+            params=params,
+            shape=envelopes.gaussian_nonorm,
+        )
+    else:
+        return pulse.Envelope(
+            name="gauss",
+            desc="Gaussian envelope",
+            params=params,
+            shape=envelopes.gaussian_nonorm,
+        )
 
 
 '''
