@@ -1,3 +1,4 @@
+import copy
 from typing import Callable
 import numpy as np
 import tensorflow as tf
@@ -47,9 +48,10 @@ def createGaussianPulse(
             max_val=max(0.8 * freq_off, 1.2 * freq_off),
             unit="Hz 2pi",
         ),
-        "delta": Quantity(value=delta, min_val=-5, max_val=5, unit=""),
     }
+
     if useDrag:
+        params["delta"] = Quantity(value=delta, min_val=-5, max_val=5, unit="")
         return pulse.EnvelopeDrag(
             name="gauss",
             desc="Gaussian envelope",
@@ -88,15 +90,28 @@ def createDoubleGaussianPulse(t_final: float, sigma: float, sigma2: float, relat
 '''
 
 
+def convertToDRAG(envelope: pulse.Envelope) -> pulse.Envelope:
+    params = copy.deepcopy(envelope.params)
+    if "delta" not in params:
+        params["delta"] = Quantity(value=0.001, min_val=-5, max_val=5, unit="")
+
+    return pulse.EnvelopeDrag(
+        name="gauss",
+        desc="Gaussian envelope",
+        params=copy.deepcopy(params),
+        shape=envelopes.gaussian_nonorm,
+    )
+
+
 def createPWCPulse(
-    num_pieces: int,
-    shape_fctn: Callable,
-    t_final: float,
-    amp: float = 0.5,
-    delta: float = -1,
-    xy_angle: float = 0.0,
-    freq_off: float = 0.5e6,
-    values: tf.Tensor = None,
+        num_pieces: int,
+        shape_fctn: Callable,
+        t_final: float,
+        amp: float = 0.5,
+        delta: float = -1,
+        xy_angle: float = 0.0,
+        freq_off: float = 0.5e6,
+        values: tf.Tensor = None,
 ) -> pulse.Envelope:
     """
     Creates a piece-wise constant envelope using the given shape function.
