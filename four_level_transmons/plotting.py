@@ -249,8 +249,9 @@ def drawSpectrum(
     """
     # calculate frequency spectrum
     freq_signal = np.fft.rfft(signal)
-    if np.abs(np.max(freq_signal)) > 1e-14:
-        normalised = freq_signal / np.max(freq_signal)
+    freq_signal_abs = np.abs(freq_signal)
+    if np.max(freq_signal_abs) > 1e-14:
+        normalised = freq_signal / np.max(freq_signal_abs)
     else:
         normalised = freq_signal
     freq = np.fft.rfftfreq(len(time), time[-1] / len(time))

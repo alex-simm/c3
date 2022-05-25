@@ -141,7 +141,7 @@ def createPWCPulse(
                 max_val=1.2 * freq_off,
                 unit="Hz 2pi",
             ),
-            "delta": Quantity(value=delta, min_val=-5, max_val=5, unit=""),
+            # "delta": Quantity(value=delta, min_val=-5, max_val=5, unit=""),
             "t_bin_start": Quantity(0),
             "t_bin_end": Quantity(t_final),
             "inphase": Quantity(values),
