@@ -5,6 +5,7 @@ import tensorflow as tf
 from c3.c3objs import Quantity
 import c3.signal.pulse as pulse
 import c3.libraries.envelopes as envelopes
+from scipy.signal import resample
 
 
 def createNoDriveEnvelope(t_final: float) -> pulse.Envelope:
@@ -145,7 +146,7 @@ def createPWCPulse(
             "t_bin_start": Quantity(0),
             "t_bin_end": Quantity(t_final),
             "inphase": Quantity(values),
-            "quadrature": Quantity(tf.zeros_like(values))
+            "quadrature": Quantity(1e-5 * tf.ones_like(values))
         },
         shape=envelopes.pwc,
     )
@@ -219,3 +220,17 @@ def convertToPWC(envelope: pulse.Envelope, numPieces: int) -> pulse.Envelope:
         xy_angle=params["xy_angle"].get_value(),
         freq_off=params["freq_offset"].get_value(),
     )
+
+
+def resamplePWC(envelope: pulse.Envelope, numPieces: int) -> pulse.Envelope:
+    inPhaseOld = envelope.params["inphase"].get_value()
+    inPhaseNew = resample(envelope.params["inphase"].get_value(), numPieces)
+    print("inphase: ", f"{inPhaseOld.shape} ({type(inPhaseOld)})", " -> ", f"{inPhaseNew.shape} ({type(inPhaseNew)})")
+    envelope.params["inphase"] = Quantity(value=tf.convert_to_tensor(inPhaseNew))
+
+    quadratureOld = envelope.params["quadrature"].get_value()
+    quadratureNew = resample(quadratureOld, numPieces)
+    print("inphase: ", f"{quadratureOld.shape} ({type(quadratureOld)})", " -> ",
+          f"{quadratureNew.shape} ({type(quadratureNew)})")
+    envelope.params["quadrature"] = Quantity(value=tf.convert_to_tensor(quadratureOld))
+    return envelope
