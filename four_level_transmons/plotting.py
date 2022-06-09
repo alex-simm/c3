@@ -658,8 +658,8 @@ def plotPopulation(
     # show and save
     if filename:
         plt.savefig(filename, bbox_inches="tight", dpi=100)
-        plt.close()
     plt.show()
+    plt.close()
 
 
 def plotObservable(
