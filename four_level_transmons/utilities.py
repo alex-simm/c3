@@ -735,14 +735,14 @@ def findFrequencyPeaks(
     x = time.flatten()
     y = signal.flatten()
 
-    freq_signal = np.fft.rfft(y)
-    if normalise and np.abs(np.max(freq_signal)) > 1e-14:
+    freq_signal = np.abs(np.fft.rfft(y))
+    if normalise and np.max(freq_signal) > 1e-14:
         normalised = freq_signal / np.max(freq_signal)
     else:
         normalised = freq_signal
     freq = np.fft.rfftfreq(len(x), x[-1] / len(x))
 
-    return findPeaks(freq, np.abs(normalised) ** 2, N)
+    return findPeaks(freq, normalised, N)
 
 
 def calculatePopulation(
