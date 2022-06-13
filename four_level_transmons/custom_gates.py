@@ -85,6 +85,20 @@ GATE_iSWAP_t1q2_t2q2 = np.kron(
     ),
 )
 
+GATE_SQRTiSWAP_t1q2_t2q2 = np.kron(
+    constants.Id,
+    np.array([
+        [1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1 / np.sqrt(2.0), 0, 0, 1j / np.sqrt(2.0), 0, 0, 0],
+        [0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1 / np.sqrt(2.0), 0, 0, 1j / np.sqrt(2.0), 0],
+        [0, 1j / np.sqrt(2.0), 0, 0, 1 / np.sqrt(2.0), 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 1j / np.sqrt(2.0), 0, 0, 1 / np.sqrt(2.0), 0],
+        [0, 0, 0, 0, 0, 0, 0, 1],
+    ])
+)
+
 # CNOT with fixed spectators
 GATE_CNOT_t2q2_t1q2_fixed00 = np.array([
     [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
