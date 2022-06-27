@@ -821,6 +821,49 @@ class HighpassFilter(Device):
 
 
 @dev_reg_deco
+class CutOffFilter(Device):
+    def __init__(self, **props):
+        super().__init__(**props)
+        self.inputs = props.pop("inputs", 1)
+        self.outputs = props.pop("outputs", 1)
+
+    def process(self, instr, chan, signal_in: List[Dict[str, Any]]) -> Dict[str, Any]:
+        lowPassCutoff = self.params["lowpass_cutoff_freq"].get_value()
+        highPassCutoff = self.params["highpass_cutoff_freq"].get_value()
+        #ts = tf.identity(signal_in[0]["ts"])
+        #response = 2 * tf.divide(tf.sin(B * ts), ts)
+
+        times = signal_in[0]["ts"]
+        frequencies = np.fft.rfftfreq(len(times), times[1] - times[0])
+
+        signal_out = dict()
+        for key, signal in signal_in[0].items():
+            if key == "ts":
+                continue
+
+            spectrum = tf.signal.rfft(signal)
+            mask = tf.ones_like(frequencies, tf.complex128)
+            if lowPassCutoff > 0:
+                mask *= tf.cast(frequencies < lowPassCutoff, tf.complex128)
+            if highPassCutoff > 0:
+                mask *= tf.cast(frequencies > highPassCutoff, tf.complex128)
+            maskedSpectrum = spectrum * mask
+            signal_out[key] = tf.cast(tf.signal.irfft(maskedSpectrum), tf.double)
+            # spectrum = tf.math.real(tf.signal.fft(tf.cast(signal, tf.complex128)))
+            #frequencies = 1.0 / signal_in[0]["ts"]
+            #print("frequencies: ", frequencies)
+            #zeros = frequencies > cutoff
+            #print(f"zeros: ({zeros.shape})", zeros)
+            #print("spectrum: ", spectrum.shape)
+            #spectrum = tf.multiply(spectrum, tf.cast(zeros, spectrum.dtype))
+            #signal2 = tf.signal.ifft(tf.cast(spectrum, tf.complex128))
+            #signal_out[key] = tf.cast(tf.math.real(signal2), tf.float64)
+        signal_out["ts"] = signal_in[0]["ts"]
+
+        return signal_out
+
+
+@dev_reg_deco
 class Mixer(Device):
     """Mixer device, combines inputs from the local oscillator and the AWG."""
 
@@ -1031,9 +1074,10 @@ class LO(Device):
         freq_noise = self.freq_noise
         components = instr.comps
         for comp in components[chan].values():
+            #print(f"LO {self.name} ", isinstance(comp, Carrier), self.lo_index < 2, comp.name == f"carrier_{chan}_{self.lo_index}", f"({self.lo_index})")
             if (
                     isinstance(comp, Carrier)
-                    and comp.name == f"carrier_{chan}_{self.lo_index}"
+                    and (self.lo_index is None or comp.name == f"carrier_{chan}_{self.lo_index}")
             ):
                 cos, sin = [], []
                 omega_lo = comp.params["freq"].get_value()
@@ -1181,3 +1225,29 @@ class AWG(Device):
             logfile.write(hjson.dumps(signal, default=hjson_encode))
             logfile.write("\n")
             logfile.flush()
+
+
+@dev_reg_deco
+class CustomWindow(Device):
+    def __init__(self, **props):
+        super().__init__(**props)
+        self.inputs = props.pop("inputs", 1)
+        self.outputs = props.pop("outputs", 1)
+
+    def process(self, instr, chan, signal_in: List[Dict[str, Any]]) -> Dict[str, Any]:
+        data = signal_in[0]
+        windowValues = tf.sin(tf.cast(tf.linspace(0.0, np.pi, data['ts'].shape[0]), dtype=tf.float64))
+
+        if 'values' in signal_in[0]:
+            windowValues = tf.cast(windowValues, dtype=data['values'].dtype)
+            return {
+                'ts': data['ts'],
+                'values': data['values'] * windowValues
+            }
+        elif 'inphase' in data:
+            windowValues = tf.cast(windowValues, dtype=data['inphase'].dtype)
+            return {
+                'ts': data['ts'],
+                'inphase': data['inphase'] * windowValues,
+                'quadrature': data['quadrature'] * windowValues
+            }
