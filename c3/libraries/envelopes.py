@@ -187,8 +187,42 @@ def fourier_cos(t, params):
     freqs = tf.reshape(
         tf.cast(params["freqs"].get_value(), tf.float64), [params["freqs"].shape[0], 1]
     )
+    phases = tf.reshape(
+        tf.cast(params["phases"].get_value(), tf.float64), [params["phases"].shape[0], 1]
+    )
     t = tf.reshape(tf.cast(t, tf.float64), [1, t.shape[0]])
-    return tf_complexify(tf.reduce_sum(amps * tf.cos(freqs * t), 0))
+    return tf_complexify(tf.reduce_sum(amps * tf.cos(freqs * t + phases), 0))
+
+
+@env_reg_deco
+def fourier(t, params):
+    """Fourier basis of the pulse constant pulse (sin).
+
+    Parameters
+    ----------
+    params : dict
+        amps : list
+            Weights of the fourier components
+        freqs : list
+            Frequencies of the fourier components
+
+    """
+    amps = tf.reshape(
+        tf.cast(params["amps"].get_value(), dtype=tf.float64),
+        [params["amps"].get_value().shape[0], 1],
+    )
+    freqs = tf.reshape(
+        tf.cast(params["freqs"].get_value(), dtype=tf.float64),
+        [params["freqs"].get_value().shape[0], 1],
+    )
+    phases = tf.reshape(
+        tf.cast(params["phases"].get_value(), dtype=tf.float64),
+        [params["phases"].get_value().shape[0], 1],
+    )
+    t = tf.reshape(tf.cast(t, tf.float64), [1, t.shape[0]])
+    factor1 = tf.cos(phases) * tf.cos(freqs * t)
+    factor2 = tf.sin(phases) * tf.sin(freqs * t)
+    return tf_complexify(tf.reduce_sum(amps * (factor1 - factor2), 0))
 
 
 @env_reg_deco

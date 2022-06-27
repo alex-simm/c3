@@ -68,6 +68,52 @@ def createGaussianPulse(
         )
 
 
+def createSinePulse(
+        frequencies: np.array,
+        amplitudes: np.array,
+        phases: np.array,
+        t_final: float,
+        amp: float = 0.5,
+        xy_angle: float = 0.0,
+        freq_off: float = 0.5e6,
+        delta: float = -1,
+        useDrag=False
+) -> pulse.Envelope:
+    params = {
+        "amp": Quantity(value=amp, min_val=0.5 * amp, max_val=1.5 * amp, unit="V"),
+        "t_final": Quantity(
+            value=t_final, min_val=0.8 * t_final, max_val=t_final, unit="s"
+        ),
+        "xy_angle": Quantity(
+            value=xy_angle, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
+        ),
+        "freq_offset": Quantity(
+            value=freq_off,
+            min_val=min(0.8 * freq_off, 1.2 * freq_off) if freq_off != 0 else -1,
+            max_val=max(0.8 * freq_off, 1.2 * freq_off) if freq_off != 0 else 1,
+            unit="Hz 2pi",
+        ),
+        "amps": Quantity(value=amplitudes, min_val=1e-2 * amplitudes, max_val=1e2 * amplitudes, unit="V"),
+        "freqs": Quantity(value=frequencies, min_val=0.95 * frequencies, max_val=1.05 * frequencies, unit="Hz 2pi"),
+        "phases": Quantity(value=phases, min_val=-np.pi * np.ones_like(phases), max_val=np.pi * np.ones_like(phases),
+                           unit="rad"),
+    }
+    if useDrag:
+        params["delta"] = Quantity(value=delta, min_val=-5, max_val=5, unit="")
+        return pulse.EnvelopeDrag(
+            name="sinus",
+            desc="Sinus envelope",
+            params=params,
+            shape=envelopes.fourier_cos,
+        )
+    else:
+        return pulse.Envelope(
+            name="sinus",
+            desc="Sinus envelope",
+            params=params,
+            shape=envelopes.fourier_cos,
+        )
+
 '''
 def createDoubleGaussianPulse(t_final: float, sigma: float, sigma2: float, relative_amp: float) -> pulse.Envelope:
     """
@@ -94,13 +140,13 @@ def createDoubleGaussianPulse(t_final: float, sigma: float, sigma2: float, relat
 def convertToDRAG(envelope: pulse.Envelope) -> pulse.Envelope:
     params = copy.deepcopy(envelope.params)
     if "delta" not in params:
-        params["delta"] = Quantity(value=0.001, min_val=-5, max_val=5, unit="")
+        params["delta"] = Quantity(value=1, min_val=-5, max_val=5, unit="")
 
     return pulse.EnvelopeDrag(
-        name="gauss",
-        desc="Gaussian envelope",
+        name=envelope.name,
+        desc=envelope.desc,
         params=copy.deepcopy(params),
-        shape=envelopes.gaussian_nonorm,
+        shape=envelope.shape,
     )
 
 
@@ -109,7 +155,6 @@ def createPWCPulse(
         shape_fctn: Callable,
         t_final: float,
         amp: float = 0.5,
-        delta: float = -1,
         xy_angle: float = 0.0,
         freq_off: float = 0.5e6,
         values: tf.Tensor = None,
@@ -142,11 +187,10 @@ def createPWCPulse(
                 max_val=1.2 * freq_off,
                 unit="Hz 2pi",
             ),
-            # "delta": Quantity(value=delta, min_val=-5, max_val=5, unit=""),
             "t_bin_start": Quantity(0),
             "t_bin_end": Quantity(t_final),
-            "inphase": Quantity(values),
-            "quadrature": Quantity(1e-5 * tf.ones_like(values))
+            "inphase": Quantity(tf.math.real(values)),
+            "quadrature": Quantity(tf.math.imag(values)) #Quantity(1e-5 * tf.ones_like(values))
         },
         shape=envelopes.pwc,
     )
@@ -157,7 +201,6 @@ def createPWCGaussianPulse(
     t_final: float,
     sigma: float,
     amp: float = 0.5,
-    delta: float = -1,
     xy_angle: float = 0.0,
     freq_off: float = 0.5e6,
 ) -> pulse.Envelope:
@@ -169,7 +212,6 @@ def createPWCGaussianPulse(
         lambda t: tf.exp(-((t - t_final / 2) ** 2) / (2 * sigma ** 2)),
         t_final,
         amp,
-        delta,
         xy_angle,
         freq_off,
     )
@@ -216,7 +258,6 @@ def convertToPWC(envelope: pulse.Envelope, numPieces: int) -> pulse.Envelope:
         shape_fctn=envelope.get_shape_values,
         t_final=params["t_final"].get_value(),
         amp=params["amp"].get_value(),
-        delta=params["delta"].get_value(),
         xy_angle=params["xy_angle"].get_value(),
         freq_off=params["freq_offset"].get_value(),
     )
