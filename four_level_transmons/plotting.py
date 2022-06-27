@@ -248,13 +248,17 @@ def drawSpectrum(
     Draws the frequency spectrum of a time signal into an Axes object.
     """
     # calculate frequency spectrum
-    freq_signal = np.fft.rfft(signal)
+    if np.iscomplex(signal):
+        freq_signal = np.fft.fftshift(np.fft.fft(signal))
+        freq = np.fft.fftshift(np.fft.fftfreq(len(time), time[-1] / len(time)))
+    else:
+        freq_signal = np.fft.rfft(signal)
+        freq = np.fft.rfftfreq(len(time), time[-1] / len(time))
     freq_signal_abs = np.abs(freq_signal)
     if np.max(freq_signal_abs) > 1e-14:
         normalised = freq_signal / np.max(freq_signal_abs)
     else:
         normalised = freq_signal
-    freq = np.fft.rfftfreq(len(time), time[-1] / len(time))
 
     # cut spectrum if necessary
     if spectralThreshold is not None:
@@ -281,7 +285,7 @@ def drawSpectrum(
         labels = np.array([s[1] for s in inRange])
 
         # binned transitions within the range
-        bins = np.linspace(x_bounds[0], x_bounds[1], 20)
+        bins = np.linspace(x_bounds[0], x_bounds[1], 40)
         digitised = np.digitize(energies, bins)
         binnedEnergies = [energies[digitised == i] for i in range(1, len(bins))]
         binnedLabels = [labels[digitised == i] for i in range(1, len(bins))]
