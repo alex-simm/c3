@@ -316,7 +316,7 @@ class Instruction:
             ts_off = ts - t_start
             if (
                     isinstance(comp, Envelope)
-                    and comp.name == f"envelope_{chan}_{awg_index}"
+                    and (awg_index is None or comp.name == f"envelope_{chan}_{awg_index}")
             ):
 
                 amp_re = comp.params["amp"].get_value()
