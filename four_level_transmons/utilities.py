@@ -148,7 +148,7 @@ def createTransmons(
 
 def createChainCouplings(
     coupling_strength: List[float],
-    qubits: List[chip.Transmon],
+    qubits: List[chip.PhysicalComponent],
 ) -> List[chip.Coupling]:
     """
     Creates nearest neighbour couplings between the qubits in 1D chain. This directly couples the qubits without
@@ -245,7 +245,7 @@ def createChainCouplingsWithCouplers(
     return g_NN_array
 
 
-def createDrives(qubits: List[chip.Transmon], fluxDrive=False) -> List[chip.Drive]:
+def createDrives(qubits: List[chip.PhysicalComponent], fluxDrive=False) -> List[chip.Drive]:
     """
     Creates and returns a drive line for each qubit in the list.
 
@@ -285,7 +285,10 @@ def createDrives(qubits: List[chip.Transmon], fluxDrive=False) -> List[chip.Driv
 def createGenerator(
         drives: List[chip.Drive],
         sim_res: float = 100e9,
-        awg_res: float = 2e9
+        awg_res: float = 2e9,
+        lowpass_cutoff_freq=-1,
+        highpass_cutoff_freq=-1,
+        useWindow=False
 ) -> Generator:
     """
     Creates and returns the generator.
@@ -307,34 +310,47 @@ def createGenerator(
         "LO": [],
         "AWG": [],
         "DigitalToAnalog": ["AWG"],
-        "ResponseFFT": ["DigitalToAnalog"],
-        "Mixer": ["LO", "ResponseFFT"],
-        "VoltsToHertz": ["Mixer"],
+        #"ResponseFFT": ["DigitalToAnalog"],
+        "Mixer": ["LO", "DigitalToAnalog"],
     }
+    last = "Mixer"
+    if useWindow:
+        chain["Window"] = [last]
+        last = "Window"
+    if lowpass_cutoff_freq > 0 or highpass_cutoff_freq > 0:
+        chain["Filter"] = [last]
+        last = "Filter"
+    chain["VoltsToHertz"] = [last]
     chains = {f"{d.name}": chain for d in drives}
 
+    deviceList = {
+        "LO": devices.LO(name="lo", lo_index=None, resolution=sim_res, outputs=1),
+        "AWG": devices.AWG(name="awg", awg_index=None, resolution=awg_res, outputs=1),
+        "DigitalToAnalog": devices.DigitalToAnalog(
+            name="dac", resolution=sim_res, inputs=1, outputs=1
+        ),
+        #"ResponseFFT": devices.ResponseFFT(
+        #    name="resp",
+        #    rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
+        #    resolution=sim_res,
+        #    inputs=1,
+        #    outputs=1,
+        #),
+        "Mixer": devices.Mixer(name="mixer", inputs=2, outputs=1),
+        "VoltsToHertz": devices.VoltsToHertz(
+            name="V_to_Hz",
+            V_to_Hz=Qty(value=1e9, min_val=0.9e9, max_val=1.1e9, unit="Hz/V"),
+            inputs=1,
+            outputs=1,
+        ),
+    }
+    if useWindow:
+        deviceList["Window"] = devices.CustomWindow(name="window")
+    if lowpass_cutoff_freq > 0 or highpass_cutoff_freq > 0:
+        deviceList["Filter"] = devices.CutOffFilter(name="cutoff", lowpass_cutoff_freq=Qty(lowpass_cutoff_freq),
+                                                    highpass_cutoff_freq=Qty(highpass_cutoff_freq))
     return Generator(
-        devices={
-            "LO": devices.LO(name="lo", lo_index=1, resolution=sim_res, outputs=1),
-            "AWG": devices.AWG(name="awg", awg_index=1, resolution=awg_res, outputs=1),
-            "DigitalToAnalog": devices.DigitalToAnalog(
-                name="dac", resolution=sim_res, inputs=1, outputs=1
-            ),
-            "ResponseFFT": devices.ResponseFFT(
-                name="resp",
-                rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
-                resolution=sim_res,
-                inputs=1,
-                outputs=1,
-            ),
-            "Mixer": devices.Mixer(name="mixer", inputs=2, outputs=1),
-            "VoltsToHertz": devices.VoltsToHertz(
-                name="V_to_Hz",
-                V_to_Hz=Qty(value=1e9, min_val=0.9e9, max_val=1.1e9, unit="Hz/V"),
-                inputs=1,
-                outputs=1,
-            ),
-        },
+        devices=deviceList,
         chains=chains,
     )
 
@@ -343,6 +359,7 @@ def createGenerator2LOs(
         drives: List[chip.Drive],
         sim_res: float = 100e9,
         awg_res: float = 2e9,
+        lowPassFrequency = None
 ) -> Generator:
     """
     Creates and returns the generator.
@@ -371,51 +388,58 @@ def createGenerator2LOs(
         "ResponseFFT2": ["DigitalToAnalog2"],
         "Mixer1": ["LO1", "ResponseFFT1"],
         "Mixer2": ["LO2", "ResponseFFT2"],
-        "RealMixer": ["Mixer1", "Mixer2"],
-        "VoltsToHertz": ["RealMixer"],
+        "RealMixer": ["Mixer1", "Mixer2"]
     }
+    if lowPassFrequency is not None:
+        chain["LowPass"] = ["RealMixer"]
+        chain["VoltsToHertz"] = ["LowPass"]
+    else:
+        chain["VoltsToHertz"] = ["RealMixer"]
     chains = {f"{d.name}": chain for d in drives}
 
+    deviceList = {
+        "LO1": devices.LO(lo_index=1, name="lo1", resolution=sim_res, outputs=1),
+        "LO2": devices.LO(lo_index=2, name="lo2", resolution=sim_res, outputs=1),
+        "AWG1": devices.AWG(
+            awg_index=1, name="awg1", resolution=awg_res, outputs=1
+        ),
+        "AWG2": devices.AWG(
+            awg_index=2, name="awg2", resolution=awg_res, outputs=1
+        ),
+        "DigitalToAnalog1": devices.DigitalToAnalog(
+            name="dac1", resolution=sim_res, inputs=1, outputs=1
+        ),
+        "DigitalToAnalog2": devices.DigitalToAnalog(
+            name="dac2", resolution=sim_res, inputs=1, outputs=1
+        ),
+        "ResponseFFT1": devices.ResponseFFT(
+            name="resp1",
+            rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
+            resolution=sim_res,
+            inputs=1,
+            outputs=1,
+        ),
+        "ResponseFFT2": devices.ResponseFFT(
+            name="resp2",
+            rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
+            resolution=sim_res,
+            inputs=1,
+            outputs=1,
+        ),
+        "Mixer1": devices.Mixer(name="mixer1", inputs=2, outputs=1),
+        "Mixer2": devices.Mixer(name="mixer2", inputs=2, outputs=1),
+        "RealMixer": devices.RealMixer(name="realmixer", inputs=2, outputs=1),
+        "VoltsToHertz": devices.VoltsToHertz(
+            name="V_to_Hz",
+            V_to_Hz=Qty(value=1e9, min_val=0.9e9, max_val=1.1e9, unit="Hz/V"),
+            inputs=1,
+            outputs=1,
+        ),
+    }
+    if lowPassFrequency is not None:
+        deviceList["LowPass"] = devices.LowPassSincFilter(name="lowpass", cutoff_freq=Qty(lowPassFrequency))
     return Generator(
-        devices={
-            "LO1": devices.LO(lo_index=1, name="lo1", resolution=sim_res, outputs=1),
-            "LO2": devices.LO(lo_index=2, name="lo2", resolution=sim_res, outputs=1),
-            "AWG1": devices.AWG(
-                awg_index=1, name="awg1", resolution=awg_res, outputs=1
-            ),
-            "AWG2": devices.AWG(
-                awg_index=2, name="awg2", resolution=awg_res, outputs=1
-            ),
-            "DigitalToAnalog1": devices.DigitalToAnalog(
-                name="dac1", resolution=sim_res, inputs=1, outputs=1
-            ),
-            "DigitalToAnalog2": devices.DigitalToAnalog(
-                name="dac2", resolution=sim_res, inputs=1, outputs=1
-            ),
-            "ResponseFFT1": devices.ResponseFFT(
-                name="resp1",
-                rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
-                resolution=sim_res,
-                inputs=1,
-                outputs=1,
-            ),
-            "ResponseFFT2": devices.ResponseFFT(
-                name="resp2",
-                rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
-                resolution=sim_res,
-                inputs=1,
-                outputs=1,
-            ),
-            "Mixer1": devices.Mixer(name="mixer1", inputs=2, outputs=1),
-            "Mixer2": devices.Mixer(name="mixer2", inputs=2, outputs=1),
-            "RealMixer": devices.RealMixer(name="realmixer", inputs=2, outputs=1),
-            "VoltsToHertz": devices.VoltsToHertz(
-                name="V_to_Hz",
-                V_to_Hz=Qty(value=1e9, min_val=0.9e9, max_val=1.1e9, unit="Hz/V"),
-                inputs=1,
-                outputs=1,
-            ),
-        },
+        devices=deviceList,
         chains=chains,
     )
 
