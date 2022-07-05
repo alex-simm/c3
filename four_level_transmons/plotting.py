@@ -140,6 +140,7 @@ def plotSignalAndSpectrum(
         min_signal_limit=None,
         filename=None,
         states: List[Tuple[float, str]] = None,
+        spectralCutoff: Tuple[float, float]=None
 ):
     """
     Plots a time dependent drive signal and its frequency spectrum.
@@ -189,6 +190,7 @@ def plotSignalAndSpectrum(
         signal=spectrumSignal,
         spectralThreshold=spectralThreshold,
         states=states,
+        spectralCutoff=spectralCutoff
     )
 
     # show and save
@@ -248,7 +250,7 @@ def drawSpectrum(
     Draws the frequency spectrum of a time signal into an Axes object.
     """
     # calculate frequency spectrum
-    if np.iscomplex(signal):
+    if np.iscomplex(signal[0]):
         freq_signal = np.fft.fftshift(np.fft.fft(signal))
         freq = np.fft.fftshift(np.fft.fftfreq(len(time), time[-1] / len(time)))
     else:
@@ -268,6 +270,13 @@ def drawSpectrum(
             end = min(limits[-1] + 1, len(freq) - 1)
             freq = freq[start: end]
             normalised = normalised[start: end]
+    if spectralCutoff is not None:
+        leftCut = np.argwhere(freq > spectralCutoff[0]).flatten()
+        leftIdx = leftCut[0] if len(leftCut) > 0 else 0
+        rightCut = np.argwhere(freq < spectralCutoff[1]).flatten()
+        rightIdx = rightCut[-1] if len(rightCut) > 0 else -1
+        freq = freq[leftIdx:rightIdx]
+        normalised = normalised[leftIdx:rightIdx]
 
     # plot frequency domain
     axes.plot(freq, normalised.real, label="Re")
