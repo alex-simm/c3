@@ -245,6 +245,7 @@ def drawSpectrum(
         signal: np.array,
         spectralThreshold: float = 1e-4,
         states: List[Tuple[float, str]] = None,
+        spectralCutoff: Tuple[float, float] = None
 ):
     """
     Draws the frequency spectrum of a time signal into an Axes object.
@@ -526,7 +527,7 @@ def plotComplexMatrixHinton(
     ly = M.shape[0]
 
     # figure
-    fig = plt.figure()
+    fig = plt.figure(facecolor='white', figsize=(8, 6))
     ax = fig.add_subplot(111)
     ax.patch.set_facecolor("white")
     ax.set_aspect("equal", "box")
