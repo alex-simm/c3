@@ -181,6 +181,8 @@ def fourier_cos(t, params):
             Frequencies of the fourier components
 
     """
+    t_final = tf.cast(params["t_final"].get_value(), t.dtype)
+    t = tf.linspace(tf.cast(0.0, tf.double), t_final, t.shape[0])
     amps = tf.reshape(
         tf.cast(params["amps"].get_value(), tf.float64), [params["amps"].shape[0], 1]
     )
@@ -207,6 +209,9 @@ def fourier(t, params):
             Frequencies of the fourier components
 
     """
+    # risefall = tf.constant(10e-9, tf.float64)
+    # flattop = (1 + tf.math.erf((t - risefall) / risefall)) * (1 + tf.math.erf((-t + t_final - risefall) / risefall)) / 4
+
     amps = tf.reshape(
         tf.cast(params["amps"].get_value(), dtype=tf.float64),
         [params["amps"].get_value().shape[0], 1],

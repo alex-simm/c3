@@ -242,59 +242,6 @@ def unitary_infid_set(propagators: dict, instructions: dict, index, dims, active
 
 
 @fid_reg_deco
-def unitary_infid_set_with_penalty(
-    propagators: dict,
-    instructions: dict,
-    index,
-    dims,
-    active_levels=2,
-    n_eval=-1,
-    penalty_factor=0.05,
-    penalty_threshold=0.3,
-):
-    """
-    Mean unitary overlap between ideal and actually performed gate for the gates in
-    propagators.
-
-    Parameters
-    ----------
-    propagators : dict
-        Contains actual unitary representations of the gates, resulting from physical
-        simulation
-    instructions : dict
-        Contains the perfect unitary representations of the gates, identified by a key.
-    index : List[int]
-        Index of the qubit(s) in the Hilbert space to be evaluated
-    dims : list
-        List of dimensions of qubits
-    n_eval : int
-        Number of evaluation
-
-    Returns
-    -------
-    tf.float
-        Unitary fidelity.
-    """
-    infids = []
-    for gate, propagator in propagators.items():
-        perfect_gate = instructions[gate].get_ideal_gate(
-            dims, index, active_levels=active_levels
-        )
-        infid = unitary_infid(
-            perfect_gate, propagator, index, dims, active_levels=active_levels
-        )
-        absVals = tf.math.abs(propagator)
-        selected = tf.gather_nd(absVals, tf.where(absVals < penalty_threshold))
-        infid += (
-            penalty_factor
-            * tf.reduce_sum(selected)
-            / tf.cast(tf.size(propagator), tf.float64)
-        )
-        infids.append(infid)
-    return tf.reduce_mean(infids)
-
-
-@fid_reg_deco
 @open_system_deco
 def lindbladian_unitary_infid(
     ideal: np.ndarray, actual: tf.constant, index=[0], dims=[2]

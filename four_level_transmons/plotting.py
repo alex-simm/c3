@@ -78,7 +78,7 @@ def plotSignal(
 
     fig, ax = plt.subplots(1, 1)
     drawSignal(
-        ax[0],
+        ax[0] if (ax is List) > 0 else ax,
         time,
         real=real,
         imag=imag,
@@ -232,8 +232,8 @@ def drawSignal(
             indices = [(np.abs(time - t)).argmin() for t in pwcTimes]
             axes.plot(envelope[0][indices], envelope[1][indices], "o", color="black")
 
-    axes.set_xlabel("Time")
-    axes.set_xlabel("Signal")
+    axes.set_xlabel("Time [ns]")
+    axes.set_ylabel("Amplitude [Hz]")
     if min_signal_limit is not None:
         limit = max(min_signal_limit, 1.1 * maxVal)
         axes.set_ylim(-limit, limit)

@@ -82,7 +82,7 @@ def createSinePulse(
     params = {
         "amp": Quantity(value=amp, min_val=0.5 * amp, max_val=1.5 * amp, unit="V"),
         "t_final": Quantity(
-            value=t_final, min_val=0.8 * t_final, max_val=t_final, unit="s"
+            value=t_final, min_val=0.9 * t_final, max_val=1.1 * t_final, unit="s"
         ),
         "xy_angle": Quantity(
             value=xy_angle, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
@@ -139,10 +139,23 @@ def createDoubleGaussianPulse(t_final: float, sigma: float, sigma2: float, relat
 
 def convertToDRAG(envelope: pulse.Envelope) -> pulse.Envelope:
     params = copy.deepcopy(envelope.params)
-    if "delta" not in params:
-        params["delta"] = Quantity(value=1, min_val=-5, max_val=5, unit="")
+    #if "delta" not in params:
+    params["delta"] = Quantity(value=1, min_val=-5, max_val=5, unit="")
 
     return pulse.EnvelopeDrag(
+        name=envelope.name,
+        desc=envelope.desc,
+        params=copy.deepcopy(params),
+        shape=envelope.shape,
+    )
+
+
+def convertFromDRAG(envelope: pulse.Envelope) -> pulse.Envelope:
+    params = copy.deepcopy(envelope.params)
+    if "delta" in params:
+        del params["delta"]
+
+    return pulse.Envelope(
         name=envelope.name,
         desc=envelope.desc,
         params=copy.deepcopy(params),
