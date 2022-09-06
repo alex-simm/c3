@@ -1,7 +1,7 @@
 import string
 from typing import List, Tuple, Dict
 import numpy as np
-from matplotlib import pyplot as plt, colors, cm, lines
+from matplotlib import pyplot as plt, colors, cm, lines, ticker
 
 from four_level_transmons.utilities import getQubitsPopulation
 from c3.experiment import Experiment
@@ -99,6 +99,9 @@ def plotSpectrum(
         signal: np.array,
         spectrum_threshold: float = 1e-4,
         filename: str = None,
+        spectralCutoff: Tuple[float, float]=None,
+        onlyAbsSpectrum=False,
+        normalise=True
 ):
     """
     Plots the normalised frequency spectrum of a time-dependent signal.
@@ -120,7 +123,8 @@ def plotSpectrum(
     signal = signal.flatten()
 
     fig, ax = plt.subplots(1, 1)
-    drawSpectrum(ax[1], time, signal, spectrum_threshold)
+    drawSpectrum(ax[1] if (ax is List) else ax, time, signal, spectralThreshold=spectrum_threshold,
+                 onlyAbs=onlyAbsSpectrum, spectralCutoff=spectralCutoff, normalise=normalise)
 
     fig.canvas.draw()
     plt.tight_layout()
@@ -140,7 +144,9 @@ def plotSignalAndSpectrum(
         min_signal_limit=None,
         filename=None,
         states: List[Tuple[float, str]] = None,
-        spectralCutoff: Tuple[float, float]=None
+        spectralCutoff: Tuple[float, float]=None,
+        normaliseSpectrum=True,
+        onlyAbsSpectrum=False
 ):
     """
     Plots a time dependent drive signal and its frequency spectrum.
@@ -190,7 +196,9 @@ def plotSignalAndSpectrum(
         signal=spectrumSignal,
         spectralThreshold=spectralThreshold,
         states=states,
-        spectralCutoff=spectralCutoff
+        spectralCutoff=spectralCutoff,
+        normalise=normaliseSpectrum,
+        onlyAbs=onlyAbsSpectrum
     )
 
     # show and save
@@ -215,16 +223,16 @@ def drawSignal(
     """
     if imag is not None:
         absSq = np.abs(real) ** 2 + np.abs(imag) ** 2
-        axes.plot(time, real, label="Re")
-        axes.plot(time, imag, label="Im")
-        axes.plot(time, absSq, label="AbsSq")
+        axes.plot(time * 1e9, real, label="Re")
+        axes.plot(time * 1e9, imag, label="Im")
+        axes.plot(time * 1e9, absSq, label="AbsSq")
         axes.legend()
         maxVal = np.max(
             [np.max(np.abs(real)), np.max(np.abs(real)), np.max(np.abs(real))]
         )
     else:
         maxVal = np.max(np.abs(real))
-        axes.plot(time, real)
+        axes.plot(time * 1e9, real)
 
     if envelope is not None:
         axes.plot(envelope[0].flatten(), envelope[1].flatten(), "--", color="black")
@@ -245,7 +253,9 @@ def drawSpectrum(
         signal: np.array,
         spectralThreshold: float = 1e-4,
         states: List[Tuple[float, str]] = None,
-        spectralCutoff: Tuple[float, float] = None
+        spectralCutoff: Tuple[float, float] = None,
+        normalise=True,
+        onlyAbs=False
 ):
     """
     Draws the frequency spectrum of a time signal into an Axes object.
@@ -258,7 +268,7 @@ def drawSpectrum(
         freq_signal = np.fft.rfft(signal)
         freq = np.fft.rfftfreq(len(time), time[-1] / len(time))
     freq_signal_abs = np.abs(freq_signal)
-    if np.max(freq_signal_abs) > 1e-14:
+    if normalise and np.max(freq_signal_abs) > 1e-14:
         normalised = freq_signal / np.max(freq_signal_abs)
     else:
         normalised = freq_signal
@@ -280,11 +290,15 @@ def drawSpectrum(
         normalised = normalised[leftIdx:rightIdx]
 
     # plot frequency domain
-    axes.plot(freq, normalised.real, label="Re")
-    axes.plot(freq, normalised.imag, label="Im")
-    axes.plot(freq, np.abs(normalised) ** 2, label="Square")
-    axes.set_xlabel("frequency")
-    axes.legend()
+    if onlyAbs:
+        axes.plot(freq, np.abs(normalised) ** 2)
+    else:
+        axes.plot(freq, normalised.real, label="Re")
+        axes.plot(freq, normalised.imag, label="Im")
+        axes.plot(freq, np.abs(normalised) ** 2, label="Square")
+        axes.legend()
+        axes.set_ylabel('')
+    axes.set_xlabel("Frequency [GHz]")
 
     # add vertical lines for transition frequencies
     x_bounds = axes.get_xlim()
@@ -305,7 +319,7 @@ def drawSpectrum(
             axes.vlines(E, 1.0, 1.1, colors=["black"], linestyles="-")
 
         filtered = list(filter(lambda x: len(x[0]) > 0, zip(binnedLabels, binnedEnergies)))
-        letters = iter(list(string.ascii_uppercase))
+        letters = iter(list(string.ascii_uppercase) + list(string.ascii_lowercase) + list(string.digits))
         for i in range(len(filtered)):
             label = " / ".join(list(filtered[i][0]))
             mean = np.array(filtered[i][1]).mean()
@@ -338,8 +352,9 @@ def plotComplexMatrix(
         colourMap: str = "nipy_spectral",
         xlabels: List[str] = None,
         ylabels: List[str] = None,
-        zlimits: Tuple[int, int] = (0, 1),
-        filename: str = None,
+        zticks: List[float] = None,
+        zlimits: Tuple[float, float] = (0, 1),
+        filename: str = None
 ):
     """
     Plots a complex matrix as a 3d bar plot, where the radius is the bar height and the phase defines
@@ -367,9 +382,7 @@ def plotComplexMatrix(
     # mesh
     lx = z1.shape[1]
     ly = z1.shape[0]
-    xpos, ypos = np.meshgrid(
-        np.arange(0.25, lx + 0.25, 1), np.arange(0.25, ly + 0.25, 1)
-    )
+    xpos, ypos = np.meshgrid(np.arange(0.25, lx + 0.25, 1), np.arange(0.25, ly + 0.25, 1))
     xpos = xpos.flatten()
     ypos = ypos.flatten()
     zpos = np.zeros(lx * ly)
@@ -398,17 +411,27 @@ def plotComplexMatrix(
         )
 
     # view, ticks and labels
-    axis.view_init(elev=30, azim=-15)
+    # x-axis and y-axis are swapped due to the camera rotation
+    axis.view_init(elev=30, azim=15)
     axis.set_xticks(np.arange(0.5, lx + 0.5, 1))
     axis.set_yticks(np.arange(0.5, ly + 0.5, 1))
-    if xlabels is not None:
-        axis.w_xaxis.set_ticklabels(xlabels, fontsize=13 - 2 * (len(xlabels) / 8))
+
     if ylabels is not None:
-        axis.w_yaxis.set_ticklabels(
-            ylabels, fontsize=13 - 2 * (len(ylabels) / 8), rotation=-65
-        )
+        axis.xaxis.set_ticklabels(ylabels, fontsize=13 - 2 * (len(ylabels) / 8), rotation=-7, va="center", ha="left")
+        axis.xaxis.set_tick_params(pad=-3)
+    if xlabels is not None:
+        axis.yaxis.set_ticklabels(xlabels, fontsize=13 - 2 * (len(xlabels) / 8), rotation=65, va="top", ha="right")
+        axis.yaxis.set_tick_params(pad=-7)
     if zlimits is not None:
         axis.set_zlim(zlimits[0], zlimits[1])
+    if zticks is not None:
+        axis.set_zticks(zticks)
+        zlabels = [str(f) for f in zticks]
+        axis.zaxis.set_ticklabels(zlabels, fontsize=13 - 2 * (len(zlabels) / 8), rotation=0, va="top", ha="right")
+    else:
+        for label in axis.zaxis.get_majorticklabels():
+            label.set(va="top", ha="right")
+    axis.zaxis.set_tick_params(pad=-5)
 
     # colour bar
     norm = colors.Normalize(vmin=-np.pi, vmax=np.pi)
@@ -416,7 +439,7 @@ def plotComplexMatrix(
         cm.ScalarMappable(norm=norm, cmap=colours),
         ax=axis,
         shrink=0.6,
-        pad=0.1,
+        pad=0.04,
         ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
     )
     cbar.ax.set_yticklabels(["$-\\pi$", "$-\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
@@ -521,6 +544,8 @@ def plotComplexMatrixHinton(
     colourMap: str = "nipy_spectral",
     gridColour: str = None,
     filename: str = None,
+    tickLabelSize=12,
+    comparisonMatrix=None
 ):
     # grid
     lx = M.shape[1]
@@ -543,11 +568,14 @@ def plotComplexMatrixHinton(
 
     for (x, y), w in np.ndenumerate(M):
         color = colours((np.angle(w) + np.pi) / (2 * np.pi))
-        size = min(1, np.sqrt(np.absolute(w) / maxAbsolute))
-        rect = plt.Rectangle(
-            (x - size / 2, y - size / 2), size, size, facecolor=color, edgecolor=color
-        )
-        ax.add_patch(rect)
+        size = min(1, np.absolute(w) / maxAbsolute)
+        ax.add_patch(plt.Rectangle((x - size / 2, y - size / 2), size, size, facecolor=color, edgecolor=color))
+
+        # dotted lines for comparison
+        if comparisonMatrix is not None:
+            size = min(1, np.absolute(comparisonMatrix[x,y]) / maxAbsolute)
+            ax.add_patch(plt.Rectangle((x - size / 2, y - size / 2), size, size, facecolor='None', edgecolor='black',
+                                       ls='dashed', lw=1.5))
 
     # plot grid lines
     if gridColour:
@@ -579,9 +607,9 @@ def plotComplexMatrixHinton(
     ax.set_xticks(np.arange(0, lx, 1))
     ax.set_yticks(np.arange(0, ly, 1))
     if xlabels is not None:
-        ax.xaxis.set_ticklabels(xlabels, fontsize=12, rotation=-90)
+        ax.xaxis.set_ticklabels(xlabels, fontsize=tickLabelSize, rotation=-90)
     if ylabels is not None:
-        ax.yaxis.set_ticklabels(ylabels, fontsize=12)
+        ax.yaxis.set_ticklabels(ylabels, fontsize=tickLabelSize)
 
     # colour bar
     norm = colors.Normalize(vmin=-np.pi, vmax=np.pi)
@@ -592,7 +620,7 @@ def plotComplexMatrixHinton(
         pad=0.1,
         ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
     )
-    cbar.ax.set_yticklabels(["$-\\pi$", "$-\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
+    cbar.ax.set_yticklabels(["$-\\pi$", "$-\\pi/2$", "0", "$\\pi/2$", "$\\pi$"], fontsize=16)
 
     # show and save
     plt.tight_layout()
