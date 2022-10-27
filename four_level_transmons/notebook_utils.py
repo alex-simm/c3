@@ -15,6 +15,17 @@ def printSignal(exper: Experiment, qubits: List[chip.Qubit],
                 states: List[Tuple[float, str]] = None):
     """
     Plots the drive signal and its spectrum for each qubit in the list separately.
+
+    Parameters
+    ----------
+    exper
+        a complete Experiment object
+    qubits
+        a list of qubits from the experiment for which to plot the signals
+    gate
+        the instruction for which to plot the signals
+    output
+        the target output
     """
     signals = exper.pmap.generator.generate_signals(gate)
     for i, qubit in enumerate(qubits):
@@ -50,7 +61,8 @@ def printTimeEvolution(exper: Experiment, init: tf.Tensor, gate: gates.Instructi
     output.save(populations, "population")
     plotPopulation(exper, populations, sequence=[gate.get_key()],
                    labels=labels, filename=output.createFileName("population", "svg"))
-    plotSplittedPopulation(exper, populations, [gate.get_key()], filename=output.createFileName("population", "svg"))
+    if len(exper.pmap.model.subsystems) > 1:
+        plotSplittedPopulation(exper, populations, [gate.get_key()], filename=output.createFileName("population", "svg"))
 
 
 def printMatrix(M: np.array, labels: List[str], name: str, output: DataOutput):
@@ -74,25 +86,22 @@ def printPropagator(exper: Experiment, gate: gates.Instruction,
     """
     U = exper.propagators[gate.get_key()]
     output.save(U, "propagator")
-    # output.save(exper.partial_propagators[gate.get_key()], "partial_propagators")
-    # os.system('bzip2 -9 "' + output.createFileName('partial_propagators.npy') + '"')
     printMatrix(U, labels, "propagator", output)
-    # Uprojected = tf_project_to_comp(U, dims=[5, 5], index=[0, 1], outdims=[4, 4])
-    # printMatrix(Uprojected, labels, "propagator_projected", output)
     if savePartials:
         output.save(exper.partial_propagators[gate.get_key()], "partial_propagators")
 
 
 def optimise(output: DataOutput, qubits: List[chip.PhysicalComponent],
-             exp: Experiment, algorithm, options, gate: gates.Instruction) -> List[float]:
+             exp: Experiment, algorithm, options, gate: gates.Instruction, goalFunction=None) -> List[float]:
     """
     Runs the optimisation of an experiment using a specific algorithm.
     """
     # set up the optimiser
+    if goalFunction is None:
+        goalFunction = fidelities.unitary_infid_set
     opt = OptimalControl(
         dir_path=output.getDirectory(),
-        fid_func=fidelities.unitary_infid_set,
-        #fid_func=diagonal_infidelity_set,
+        fid_func=goalFunction,
         fid_subspace=[q.name for q in qubits],
         pmap=exp.pmap,
         algorithm=algorithm,
@@ -136,17 +145,6 @@ def printAllSignals(exper: Experiment, qubit: chip.Qubit, output: DataOutput, di
     for name, values in outputs.items():
         filename = output.createFileName(directory + f"/device_{drive.name}_{name}", "svg")
         time = values["ts"].numpy()
-        #if name.startswith("AWG"):
-        #    re = values["inphase"].numpy()
-        #    im = values["quadrature"].numpy()
-        #    plotSignalAndSpectrum(time[:1000], real=re[:1000], min_signal_limit=None,
-        #                          spectralThreshold=5e-4,
-        #                          filename=output.createFileName(directory + f"/device_{drive.name}_{name}_real", "svg"))
-        #    plotSignalAndSpectrum(time[:1000], real=im[:1000], min_signal_limit=None,
-        #                          spectralThreshold=5e-4,
-        #                          filename=output.createFileName(directory + f"/device_{drive.name}_{name}_imag", "svg"))
-
-        print(name+":")
         if "values" in values:
             signal = values["values"].numpy()
             print(signal)
