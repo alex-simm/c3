@@ -1,5 +1,6 @@
 import os
 from typing import List, Tuple
+import scipy.linalg
 
 from c3.experiment import Experiment
 from c3.libraries import chip, fidelities
@@ -154,3 +155,49 @@ def printAllSignals(exper: Experiment, qubit: chip.Qubit, output: DataOutput, di
             print(values["quadrature"].numpy())
             plotSignalAndSpectrum(time, real=values["inphase"].numpy(), imag=values["quadrature"].numpy(),
                                   min_signal_limit=None, spectralThreshold=None, filename=filename)
+
+
+def getEnergiesFromModel(experiment: Experiment, gate: gates.Instruction, labels: List[str]) -> List[Tuple[float, str]]:
+    """
+    Returns a list of all energies of the model, including a Stark shift, combined with the corresponding state labels.
+    The list of labels is expected to be sorted by increasing energy.
+    """
+    # obtain eigenvalues from full (Stark-shifted) Hamiltonian
+    signal = experiment.pmap.generator.generate_signals(gate)
+    H = experiment.pmap.model.get_Hamiltonian(signal)
+    evals,evecs = scipy.linalg.eig(H)
+    evals = evals.real / (2 * np.pi)
+
+    # combine eigenvalues with labels
+    indices = [np.argmax(np.round(evecs[i], 2)) for i in range(len(evals))]
+    stateEnergies = []
+    for i, x in enumerate(labels):
+        if x is not None:
+            energy = evals[indices[i]]
+            stateEnergies.append((energy, x))
+    return stateEnergies
+
+
+def getEnergiesFromFile(filename: str, labels: List[str]) -> List[Tuple[float, str]]:
+    """
+    Reads a list of all energies of the model, including a Stark shift by the drive, combined with the corresponding
+    state labels from a file.
+    """
+    energies = np.load(filename)
+    return list(zip(energies, labels))
+
+
+def calculateTransitions(energies: List[Tuple[float, str]]) -> List[Tuple[float, str]]:
+    """
+    Calculates and returns all transitions (resonances) between all pairs of energies from the list, combined with a
+    corresponding label.
+    """
+    items = sorted(energies, key=lambda x: x[0])
+    transitions = []
+    for i in range(len(items)):
+        for j in range(len(items)):
+            if i != j:
+                E = items[j][0] - items[i][0]
+                if E > 0:
+                    transitions.append((E, items[i][1] + " - " + items[j][1]))
+    return transitions
