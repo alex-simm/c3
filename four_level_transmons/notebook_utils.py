@@ -6,6 +6,7 @@ from c3.experiment import Experiment
 from c3.libraries import chip, fidelities
 from c3.optimizers.optimalcontrol import OptimalControl
 from c3.signal import gates
+from c3.utils.tf_utils import tf_project_to_comp
 from four_level_transmons.DataOutput import DataOutput
 from four_level_transmons.plotting import *
 from four_level_transmons.utilities import *
@@ -80,14 +81,21 @@ def printMatrix(M: np.array, labels: List[str], name: str, output: DataOutput):
 
 
 def printPropagator(exper: Experiment, gate: gates.Instruction,
-                    labels: List[str], output: DataOutput,
+                    labels_with_leakage: List[str], labels: List[str], output: DataOutput,
                     savePartials=False):
     """
     Saves the propagator of a gate to a file and plots it as a Hinton diagram.
     """
     U = exper.propagators[gate.get_key()]
     output.save(U, "propagator")
-    printMatrix(U, labels, "propagator", output)
+    printMatrix(U, labels_with_leakage, "propagator", output)
+
+    dims = exper.pmap.model.dims
+    projected = tf_project_to_comp(
+        U, dims=dims, index=list(range(len(dims))), outdims=[4] * len(dims)
+    )
+    printMatrix(projected, labels, "propagator_projected", output)
+
     if savePartials:
         output.save(exper.partial_propagators[gate.get_key()], "partial_propagators")
 
