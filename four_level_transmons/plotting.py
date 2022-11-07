@@ -730,9 +730,6 @@ def plotObservable(
         Optional name of the file to which the plot will be saved. If none,
         it will only be shown.
     """
-    # calculate the time dependent level population
-    model = exp.pmap.model
-
     # timestamps
     dt = exp.ts[1] - exp.ts[0]
     ts = np.linspace(0.0, dt * values.shape[0], values.shape[0])
@@ -827,6 +824,33 @@ def plotSplittedPopulation(
         ax.set_ylabel("Population")
         ax.legend([str(x) for x in np.arange(dims[idx])])
 
+    plt.tight_layout()
+
+    # show and save
+    if filename:
+        plt.savefig(filename, bbox_inches="tight", dpi=100)
+    plt.show()
+    plt.close()
+
+
+def drawResonanceDiagram(resonanceEnergies: List[float], labels: List[str], limits: Tuple[float, float],
+                         filename=None):
+    fig, ax = plt.subplots(1, 1, figsize=[4, 5])
+    for energy, label in zip(resonanceEnergies, labels):
+        plt.plot([0, 0.6], [energy, energy])
+        ax.annotate(
+            text=label,
+            xy=(0.8, energy),
+            xycoords="data",
+            verticalalignment="center",
+            horizontalalignment="center"
+        )
+
+    plt.xlim(0, 1)
+    if limits is not None:
+        plt.ylim(limits[0], limits[1])
+
+    plt.ylabel('Energy [Hz]')
     plt.tight_layout()
 
     # show and save
