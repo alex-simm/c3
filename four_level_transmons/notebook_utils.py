@@ -165,15 +165,8 @@ def printAllSignals(exper: Experiment, qubit: chip.Qubit, output: DataOutput, di
                                   min_signal_limit=None, spectralThreshold=None, filename=filename)
 
 
-def getEnergiesFromModel(experiment: Experiment, gate: gates.Instruction, labels: List[str]) -> List[Tuple[float, str]]:
-    """
-    Returns a list of all energies of the model, including a Stark shift, combined with the corresponding state labels.
-    The list of labels is expected to be sorted by increasing energy.
-    """
-    # obtain eigenvalues from full (Stark-shifted) Hamiltonian
-    signal = experiment.pmap.generator.generate_signals(gate)
-    H = experiment.pmap.model.get_Hamiltonian(signal)
-    evals,evecs = scipy.linalg.eig(H)
+def getEnergiesFromHamiltonian(H: np.ndarray, labels: List[str]) -> List[Tuple[float, str]]:
+    evals, evecs = scipy.linalg.eig(H)
     evals = evals.real / (2 * np.pi)
 
     # combine eigenvalues with labels
@@ -186,12 +179,31 @@ def getEnergiesFromModel(experiment: Experiment, gate: gates.Instruction, labels
     return stateEnergies
 
 
+def getEnergiesFromModel(experiment: Experiment, gate: gates.Instruction, labels: List[str]) -> List[Tuple[float, str]]:
+    """
+    Returns a list of all energies of the model, including a Stark shift, combined with the corresponding state labels.
+    The list of labels is expected to be sorted by increasing energy.
+    """
+    # obtain eigenvalues from full (Stark-shifted) Hamiltonian
+    signal = experiment.pmap.generator.generate_signals(gate)
+    H = experiment.pmap.model.get_Hamiltonian(signal)
+    return getEnergiesFromHamiltonian(H, labels)
+
+
 def getEnergiesFromFile(filename: str, labels: List[str]) -> List[Tuple[float, str]]:
     """
     Reads a list of all energies of the model, including a Stark shift by the drive, combined with the corresponding
     state labels from a file.
     """
     energies = np.load(filename)
+    return list(zip(energies, labels))
+
+
+def getEnergiesFromPropagator(U: np.array, t_final: float, dt: float, labels: List[str]) -> List[Tuple[float, str]]:
+    tau = t_final / dt
+    U = np.float_power(U, 1.0 / tau)
+    diag = np.diagonal(U)
+    energies = -np.angle(diag) / (2 * np.pi * dt)
     return list(zip(energies, labels))
 
 

@@ -16,6 +16,82 @@ from scipy.signal import find_peaks
 from c3.model import Model
 
 
+def createSingleTransmonStateLabels(dim: int = 5, makeLatexKets: bool = False):
+    labels = [f"{i}" for i in range(dim)]
+    if makeLatexKets:
+        labels = [f"$|{s}\\rangle$" for s in labels]
+    return labels
+
+
+def createSingleTransmonQubitLabels(dim: int = 5, makeLatexKets: bool = False, labelLeakageAsNumbers: bool = True):
+    level_labels_transmon = ["0,0", "0,1", "1,0", "1,1"]
+    labels = []
+    for i in range(dim):
+        if i <= 3:
+            s = f"{level_labels_transmon[i]}"
+            if makeLatexKets:
+                s = f"$|{s}\\rangle$"
+        else:
+            if labelLeakageAsNumbers:
+                s = f"{i}"
+                if makeLatexKets:
+                    s = f"$|{s}\\rangle$"
+            else:
+                s = "leakage"
+        labels.append(s)
+    return labels
+
+
+def combineTwoTransmonLabels(singleTransmonLabels: List[str], dim: int = 5, makeLatexKets: bool = False,
+                             makeLatexBras: bool = False, includeLeakage: bool = True,
+                             labelLeakageAsNumbers: bool = True):
+    labels = []
+    for i in range(dim):
+        for j in range(dim):
+            if i <= 3 and j <= 3:
+                # computational subspace
+                if makeLatexKets:
+                    labels.append(f"$|{singleTransmonLabels[i]}\\rangle|{singleTransmonLabels[j]}\\rangle$")
+                elif makeLatexBras:
+                    labels.append(f"$\\langle{singleTransmonLabels[i]}|\\langle{singleTransmonLabels[j]}|$")
+                else:
+                    labels.append(f"{singleTransmonLabels[i]},{singleTransmonLabels[j]}")
+            elif includeLeakage:
+                # leakage
+                if labelLeakageAsNumbers:
+                    if makeLatexKets:
+                        labels.append(f"$|{i}\\rangle|{j}\\rangle$")
+                    else:
+                        labels.append(f"{i},{j}")
+                else:
+                    labels.append("leakage")
+    return labels
+
+
+def createTwoTransmonsStateLabels(dim: int = 5, makeLatexKets: bool = False, makeLatexBras: bool = False,
+                                  includeLeakage: bool = True, labelLeakageAsNumbers: bool = True):
+    return combineTwoTransmonLabels(
+        singleTransmonLabels=createSingleTransmonStateLabels(dim, False),
+        dim=dim,
+        makeLatexKets=makeLatexKets,
+        makeLatexBras=makeLatexBras,
+        includeLeakage=includeLeakage,
+        labelLeakageAsNumbers=labelLeakageAsNumbers
+    )
+
+
+def createTwoTransmonsQubitLabels(dim: int = 5, makeLatexKets: bool = False, makeLatexBras: bool = False,
+                                  includeLeakage: bool = True, labelLeakageAsNumbers: bool = True):
+    return combineTwoTransmonLabels(
+        singleTransmonLabels=createSingleTransmonQubitLabels(dim, False),
+        dim=dim,
+        makeLatexKets=makeLatexKets,
+        makeLatexBras=makeLatexBras,
+        includeLeakage=includeLeakage,
+        labelLeakageAsNumbers=labelLeakageAsNumbers
+    )
+
+
 def createQubits(
     qubit_levels_list: List[int],
     freq_list: List[float],
@@ -689,11 +765,18 @@ def getDrive(model: Model, subsystem: chip.PhysicalComponent) -> chip.Drive:
     """
     Returns the drive line that is connected to the subsystem, or None if no drive is connected to it.
     """
-    drives = [
-        cast(chip.Drive, d) for d in model.couplings.values() if type(d) == chip.Drive
-    ]
+    drives = getDrives(model)
     connected = list(filter(lambda d: subsystem.name in d.connected, drives))
     return connected[0] if len(connected) > 0 else None
+
+
+def getDrives(model: Model) -> List[chip.Drive]:
+    """
+    Returns all drive lines that are connected to a subsystem in the model.
+    """
+    return [
+        cast(chip.Drive, d) for d in model.couplings.values() if type(d) == chip.Drive
+    ]
 
 
 def generateSignal(
@@ -802,6 +885,45 @@ def calculatePopulation(
             pops = exp.populations(psi_t, model.lindbladian)
             pop_t = np.append(pop_t, pops, axis=1)
     return pop_t
+
+
+def calculatePhases(
+    exp: Experiment, psi_init: tf.Tensor, sequence: List[str], stepFraction=1.0
+) -> np.array:
+    """
+    Calculates the time dependent population starting from a specific initial state.
+
+    Parameters
+    ----------
+    exp: Experiment
+        The experiment containing the model and propagators
+    psi_init: tf.Tensor
+        Initial state vector
+    sequence: List[str]
+        List of gate names that will be applied to the state
+
+    Returns
+    -------
+    np.array
+       two-dimensional array, first dimension: time, second dimension: population of the levels
+    """
+    # calculate the time dependent level population
+    model = exp.pmap.model
+    dUs = exp.partial_propagators
+    if type(psi_init).__module__ != 'numpy':
+        psi_init = psi_init.numpy()
+    psi_t = psi_init
+    angles_t = np.angle(psi_t)
+    angles_t[np.abs(psi_init) < 1e-1] = 0.0
+    for gate in sequence:
+        gateDUs = dUs[gate]
+        for du in gateDUs[:int(stepFraction * len(gateDUs))]:
+            psi_t = np.matmul(du, psi_t)
+            angles = np.angle(psi_t)
+            angles[np.abs(psi_t) < 1e-1] = 0.0
+            angles_t = np.append(angles_t, angles, axis=1)
+    return angles_t
+
 
 
 def calculateObservable(
