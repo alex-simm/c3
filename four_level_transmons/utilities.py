@@ -16,14 +16,17 @@ from scipy.signal import find_peaks
 from c3.model import Model
 
 
-def createSingleTransmonStateLabels(dim: int = 5, makeLatexKets: bool = False):
+def createSingleTransmonStateLabels(dim: int = 5, makeLatexKets: bool = False, makeLatexBras: bool = False):
     labels = [f"{i}" for i in range(dim)]
     if makeLatexKets:
         labels = [f"$|{s}\\rangle$" for s in labels]
+    elif makeLatexBras:
+        labels = [f"$\\langle{s}|$" for s in labels]
     return labels
 
 
-def createSingleTransmonQubitLabels(dim: int = 5, makeLatexKets: bool = False, labelLeakageAsNumbers: bool = True):
+def createSingleTransmonQubitLabels(dim: int = 5, makeLatexKets: bool = False, makeLatexBras: bool = False,
+                                    labelLeakageAsNumbers: bool = True):
     level_labels_transmon = ["0,0", "0,1", "1,0", "1,1"]
     labels = []
     for i in range(dim):
@@ -31,11 +34,15 @@ def createSingleTransmonQubitLabels(dim: int = 5, makeLatexKets: bool = False, l
             s = f"{level_labels_transmon[i]}"
             if makeLatexKets:
                 s = f"$|{s}\\rangle$"
+            elif makeLatexBras:
+                s = f"$\\langle{s}|$"
         else:
             if labelLeakageAsNumbers:
                 s = f"{i}"
                 if makeLatexKets:
                     s = f"$|{s}\\rangle$"
+                elif makeLatexBras:
+                    s = f"$\\langle{s}|$"
             else:
                 s = "leakage"
         labels.append(s)
@@ -434,8 +441,7 @@ def createGenerator(
 def createGenerator2LOs(
         drives: List[chip.Drive],
         sim_res: float = 100e9,
-        awg_res: float = 2e9,
-        lowPassFrequency = None
+        awg_res: float = 2e9
 ) -> Generator:
     """
     Creates and returns the generator.
@@ -460,17 +466,11 @@ def createGenerator2LOs(
         "AWG2": [],
         "DigitalToAnalog1": ["AWG1"],
         "DigitalToAnalog2": ["AWG2"],
-        "ResponseFFT1": ["DigitalToAnalog1"],
-        "ResponseFFT2": ["DigitalToAnalog2"],
-        "Mixer1": ["LO1", "ResponseFFT1"],
-        "Mixer2": ["LO2", "ResponseFFT2"],
-        "RealMixer": ["Mixer1", "Mixer2"]
+        "Mixer1": ["LO1", "DigitalToAnalog1"],
+        "Mixer2": ["LO2", "DigitalToAnalog2"],
+        "RealMixer": ["Mixer1", "Mixer2"],
+        "VoltsToHertz": ["RealMixer"]
     }
-    if lowPassFrequency is not None:
-        chain["LowPass"] = ["RealMixer"]
-        chain["VoltsToHertz"] = ["LowPass"]
-    else:
-        chain["VoltsToHertz"] = ["RealMixer"]
     chains = {f"{d.name}": chain for d in drives}
 
     deviceList = {
@@ -488,20 +488,6 @@ def createGenerator2LOs(
         "DigitalToAnalog2": devices.DigitalToAnalog(
             name="dac2", resolution=sim_res, inputs=1, outputs=1
         ),
-        "ResponseFFT1": devices.ResponseFFT(
-            name="resp1",
-            rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
-            resolution=sim_res,
-            inputs=1,
-            outputs=1,
-        ),
-        "ResponseFFT2": devices.ResponseFFT(
-            name="resp2",
-            rise_time=Qty(value=0.3e-9, min_val=0.05e-9, max_val=0.6e-9, unit="s"),
-            resolution=sim_res,
-            inputs=1,
-            outputs=1,
-        ),
         "Mixer1": devices.Mixer(name="mixer1", inputs=2, outputs=1),
         "Mixer2": devices.Mixer(name="mixer2", inputs=2, outputs=1),
         "RealMixer": devices.RealMixer(name="realmixer", inputs=2, outputs=1),
@@ -512,8 +498,6 @@ def createGenerator2LOs(
             outputs=1,
         ),
     }
-    if lowPassFrequency is not None:
-        deviceList["LowPass"] = devices.LowPassSincFilter(name="lowpass", cutoff_freq=Qty(lowPassFrequency))
     return Generator(
         devices=deviceList,
         chains=chains,

@@ -1,5 +1,7 @@
 import os
 from typing import List, Tuple
+
+import numpy as np
 import scipy.linalg
 
 from c3.experiment import Experiment
@@ -165,21 +167,14 @@ def printAllSignals(exper: Experiment, qubit: chip.Qubit, output: DataOutput, di
                                   min_signal_limit=None, spectralThreshold=None, filename=filename)
 
 
-def getEnergiesFromHamiltonian(H: np.ndarray, labels: List[str]) -> List[Tuple[float, str]]:
+def getEnergiesFromHamiltonian(H: np.ndarray) -> List[float]:
     evals, evecs = scipy.linalg.eig(H)
     evals = evals.real / (2 * np.pi)
-
-    # combine eigenvalues with labels
     indices = [np.argmax(np.round(evecs[i], 2)) for i in range(len(evals))]
-    stateEnergies = []
-    for i, x in enumerate(labels):
-        if x is not None:
-            energy = evals[indices[i]]
-            stateEnergies.append((energy, x))
-    return stateEnergies
+    return evals[indices]
 
 
-def getEnergiesFromModel(experiment: Experiment, gate: gates.Instruction, labels: List[str]) -> List[Tuple[float, str]]:
+def getEnergiesFromModel(experiment: Experiment, gate: gates.Instruction) -> List[float]:
     """
     Returns a list of all energies of the model, including a Stark shift, combined with the corresponding state labels.
     The list of labels is expected to be sorted by increasing energy.
@@ -187,37 +182,40 @@ def getEnergiesFromModel(experiment: Experiment, gate: gates.Instruction, labels
     # obtain eigenvalues from full (Stark-shifted) Hamiltonian
     signal = experiment.pmap.generator.generate_signals(gate)
     H = experiment.pmap.model.get_Hamiltonian(signal)
-    return getEnergiesFromHamiltonian(H, labels)
+    return getEnergiesFromHamiltonian(H)
 
 
-def getEnergiesFromFile(filename: str, labels: List[str]) -> List[Tuple[float, str]]:
+def getEnergiesFromFile(filename: str) -> List[float]:
     """
     Reads a list of all energies of the model, including a Stark shift by the drive, combined with the corresponding
     state labels from a file.
     """
-    energies = np.load(filename)
-    return list(zip(energies, labels))
+    return np.load(filename)
 
 
-def getEnergiesFromPropagator(U: np.array, t_final: float, dt: float, labels: List[str]) -> List[Tuple[float, str]]:
+def getEnergiesFromPropagator(U: np.array, t_final: float, dt: float) -> List[float]:
+    """
+    Returns energies obtained from the log of a short-time propagator U in the order of the Hilbert space basis.
+    """
     tau = t_final / dt
     U = np.float_power(U, 1.0 / tau)
     diag = np.diagonal(U)
-    energies = -np.angle(diag) / (2 * np.pi * dt)
-    return list(zip(energies, labels))
+    return -np.angle(diag) / (2 * np.pi * dt)
 
 
-def calculateTransitions(energies: List[Tuple[float, str]]) -> List[Tuple[float, str]]:
+def calculateTransitions(energies: List[float], labels: List[str]) -> List[Tuple[float, str]]:
     """
     Calculates and returns all transitions (resonances) between all pairs of energies from the list, combined with a
     corresponding label.
     """
-    items = sorted(energies, key=lambda x: x[0])
+    indices = np.argsort(energies)
+    sortedEnergies = np.array(energies)[indices]
+    sortedLabels = np.array(labels)[indices]
     transitions = []
-    for i in range(len(items)):
-        for j in range(len(items)):
+    for i in range(len(sortedEnergies)):
+        for j in range(len(sortedEnergies)):
             if i != j:
-                E = items[j][0] - items[i][0]
+                E = sortedEnergies[j] - sortedEnergies[i]
                 if E > 0:
-                    transitions.append((E, items[i][1] + " - " + items[j][1]))
+                    transitions.append((E, sortedLabels[i] + " - " + sortedLabels[j]))
     return transitions

@@ -417,17 +417,17 @@ def plotComplexMatrix(
     axis.set_yticks(np.arange(0.5, ly + 0.5, 1))
 
     if ylabels is not None:
-        axis.xaxis.set_ticklabels(ylabels, fontsize=13 - 2 * (len(ylabels) / 8), rotation=-7, va="center", ha="left")
+        axis.xaxis.set_ticklabels(ylabels, fontsize=16 - 2 * (len(ylabels) / 8), rotation=-7, va="center", ha="left")
         axis.xaxis.set_tick_params(pad=-3)
     if xlabels is not None:
-        axis.yaxis.set_ticklabels(xlabels, fontsize=13 - 2 * (len(xlabels) / 8), rotation=65, va="top", ha="right")
+        axis.yaxis.set_ticklabels(xlabels, fontsize=16 - 2 * (len(xlabels) / 8), rotation=65, va="top", ha="right")
         axis.yaxis.set_tick_params(pad=-7)
     if zlimits is not None:
         axis.set_zlim(zlimits[0], zlimits[1])
     if zticks is not None:
         axis.set_zticks(zticks)
         zlabels = [str(f) for f in zticks]
-        axis.zaxis.set_ticklabels(zlabels, fontsize=13 - 2 * (len(zlabels) / 8), rotation=0, va="top", ha="right")
+        axis.zaxis.set_ticklabels(zlabels, fontsize=16 - 2 * (len(zlabels) / 8), rotation=0, va="top", ha="right")
     else:
         for label in axis.zaxis.get_majorticklabels():
             label.set(va="top", ha="right")
@@ -439,10 +439,10 @@ def plotComplexMatrix(
         cm.ScalarMappable(norm=norm, cmap=colours),
         ax=axis,
         shrink=0.6,
-        pad=0.04,
+        pad=0.06,
         ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
     )
-    cbar.ax.set_yticklabels(["$-\\pi$", "$-\\pi/2$", "0", "$\\pi/2$", "$\\pi$"])
+    cbar.ax.set_yticklabels(["$-\\pi$", "$-\\pi/2$", "0", "$\\pi/2$", "$\\pi$"], fontsize=18)
 
     # show and save
     fig.canvas.draw()
@@ -545,7 +545,8 @@ def plotComplexMatrixHinton(
     gridColour: str = None,
     filename: str = None,
     tickLabelSize=12,
-    comparisonMatrix=None
+    comparisonMatrix=None,
+    addAbsValueAsText=False
 ):
     # grid
     lx = M.shape[1]
@@ -570,6 +571,14 @@ def plotComplexMatrixHinton(
         color = colours((np.angle(w) + np.pi) / (2 * np.pi))
         size = min(1, np.absolute(w) / maxAbsolute)
         ax.add_patch(plt.Rectangle((x - size / 2, y - size / 2), size, size, facecolor=color, edgecolor=color))
+
+        if addAbsValueAsText:
+            value = np.absolute(w) / maxAbsolute
+            #ax.text(x - size / 2, y - size / 2, f'{np.round(value, 2)}', {'fontsize': 20})
+            ax.text(x - size / 2, y - size / 2, f'{np.round(value, 2)}',
+                    horizontalalignment='center', verticalalignment='center', fontsize=20
+                    #transform=ax.transAxes
+                    )
 
         # dotted lines for comparison
         if comparisonMatrix is not None:
@@ -620,7 +629,7 @@ def plotComplexMatrixHinton(
         pad=0.1,
         ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
     )
-    cbar.ax.set_yticklabels(["$-\\pi$", "$-\\pi/2$", "0", "$\\pi/2$", "$\\pi$"], fontsize=16)
+    cbar.ax.set_yticklabels(["$-\\pi$", "$-\\pi/2$", "0", "$\\pi/2$", "$\\pi$"], fontsize=24)
 
     # show and save
     plt.tight_layout()
