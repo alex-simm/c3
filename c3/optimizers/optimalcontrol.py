@@ -183,7 +183,6 @@ class OptimalControl(Optimizer):
             n_eval=self.evaluation + 1,
             **self.fid_func_kwargs,
         )
-        self.evaluation += 1
 
         if self.callback is not None:
             self.callback(self.evaluation + 1, goal.numpy())

@@ -1251,4 +1251,3 @@ class CustomWindow(Device):
                 'inphase': data['inphase'] * windowValues,
                 'quadrature': data['quadrature'] * windowValues
             }
-gaussian_nonorm_complex
