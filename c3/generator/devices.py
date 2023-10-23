@@ -927,7 +927,7 @@ class RealMixer(Device):
         values = tf.zeros_like(inputs[0]["values"])
         for ip in inputs:
             values += ip["values"]
-        self.signal = {"values": values / float(len(inputs)), "ts": inputs[0]["ts"]}
+        self.signal = {"values": values, "ts": inputs[0]["ts"]}
         return self.signal
 
 
@@ -1251,3 +1251,4 @@ class CustomWindow(Device):
                 'inphase': data['inphase'] * windowValues,
                 'quadrature': data['quadrature'] * windowValues
             }
+gaussian_nonorm_complex
