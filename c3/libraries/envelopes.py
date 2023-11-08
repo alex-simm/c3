@@ -525,6 +525,34 @@ def gaussian_nonorm(t, params):
 
 
 @env_reg_deco
+def gaussian_nonorm_complex(t, params):
+    """
+    Non-normalized gaussian. Maximum value is 1, area is given by length.
+
+    Parameters
+    ----------
+    params : dict
+        t_final : float
+            Total length of the Gaussian.
+        sigma: float
+            Width of the Gaussian.
+
+    """
+    t_final = tf.cast(params["t_final"].get_value(), t.dtype)
+
+    sigmaR = params["sigmaR"].get_value()
+    gaussR = tf.exp(-((t - t_final / 2) ** 2) / (2 * sigmaR ** 2))
+    sigmaI = params["sigmaI"].get_value()
+    gaussI = tf.exp(-((t - t_final / 2) ** 2) / (2 * sigmaI ** 2))
+
+    if "ampR" in params and "ampI" in params:
+        gaussR = tf.cast(params["ampR"].get_value(), tf.float64) * gaussR
+        gaussI = tf.cast(params["ampI"].get_value(), tf.float64) * gaussI
+
+    return tf.complex(gaussR, gaussI)
+
+
+@env_reg_deco
 def gaussian_der_nonorm(t, params):
     """Derivative of the normalized gaussian (ifself not normalized)."""
     t_final = tf.cast(params["t_final"].get_value(), tf.float64)

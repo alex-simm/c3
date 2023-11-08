@@ -33,13 +33,12 @@ def createGaussianPulse(
     Creates a Gaussian pulse.
     """
     params = {
-        "amp": Quantity(value=amp, min_val=0.5 * amp, max_val=1.5 * amp, unit="V"),
+        "amp": Quantity(value=amp, min_val=0.1 * amp, max_val=10.0 * amp, unit="V"),
         "t_final": Quantity(
             value=t_final, min_val=0.8 * t_final, max_val=t_final, unit="s"
         ),
-        "sigma": Quantity(
-            value=sigma, min_val=0.5 * sigma, max_val=1.2 * sigma, unit="s"
-        ),
+        "sigma": Quantity(value=sigma, min_val=np.minimum(0.5 * sigma, 1.2 * sigma),
+                          max_val=np.maximum(0.5 * sigma, 1.2 * sigma), unit="s"),
         "xy_angle": Quantity(
             value=xy_angle, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
         ),
@@ -53,19 +52,58 @@ def createGaussianPulse(
 
     if useDrag:
         params["delta"] = Quantity(value=delta, min_val=-5, max_val=5, unit="")
-        return pulse.EnvelopeDrag(
-            name="gauss",
-            desc="Gaussian envelope",
-            params=params,
-            shape=envelopes.gaussian_nonorm,
-        )
+        return pulse.EnvelopeDrag(name="gauss", desc="Gaussian envelope", params=params,
+                                  shape=envelopes.gaussian_nonorm)
     else:
-        return pulse.Envelope(
-            name="gauss",
-            desc="Gaussian envelope",
-            params=params,
-            shape=envelopes.gaussian_nonorm,
-        )
+        return pulse.Envelope(name="gauss", desc="Gaussian envelope", params=params, shape=envelopes.gaussian_nonorm)
+
+
+def createComplexGaussianPulse(
+        t_final: float,
+        sigmaR: float,
+        sigmaI: float,
+        amp: float = 1.0,
+        ampR: float = None,
+        ampI: float = None,
+        delta: float = -1,
+        xy_angle: float = 0.0,
+        freq_off: float = 0.5e6,
+        useDrag=False,
+) -> pulse.Envelope:
+    """
+    Creates a Gaussian pulse.
+    """
+    params = {
+        "amp": Quantity(value=amp, min_val=0.5 * amp, max_val=1.5 * amp, unit="V"),
+        "t_final": Quantity(
+            value=t_final, min_val=0.8 * t_final, max_val=t_final, unit="s"
+        ),
+        "sigmaR": Quantity(value=sigmaR, min_val=np.minimum(0.5 * sigmaR, 1.2 * sigmaR),
+                           max_val=np.maximum(0.5 * sigmaR, 1.2 * sigmaR), unit="s"),
+        "sigmaI": Quantity(value=sigmaI, min_val=np.minimum(0.5 * sigmaI, 1.2 * sigmaI),
+                           max_val=np.maximum(0.5 * sigmaI, 1.2 * sigmaI), unit="s"),
+        "xy_angle": Quantity(
+            value=xy_angle, min_val=-1.5 * np.pi, max_val=2.5 * np.pi, unit="rad"
+        ),
+        "freq_offset": Quantity(
+            value=freq_off,
+            min_val=min(0.8 * freq_off, 1.2 * freq_off),
+            max_val=max(0.8 * freq_off, 1.2 * freq_off),
+            unit="Hz 2pi",
+        ),
+    }
+
+    if ampR is not None and ampI is not None:
+        params["ampR"] = Quantity(value=ampR, min_val=0.5 * ampR, max_val=1.5 * ampR, unit="s")
+        params["ampI"] = Quantity(value=ampI, min_val=0.5 * ampI, max_val=1.5 * ampI, unit="s")
+
+    if useDrag:
+        params["delta"] = Quantity(value=delta, min_val=-5, max_val=5, unit="")
+        return pulse.EnvelopeDrag(name="gauss", desc="Gaussian envelope", params=params,
+                                  shape=envelopes.gaussian_nonorm_complex)
+    else:
+        return pulse.Envelope(name="gauss", desc="Gaussian envelope", params=params,
+                              shape=envelopes.gaussian_nonorm_complex)
 
 
 def createSinePulse(
