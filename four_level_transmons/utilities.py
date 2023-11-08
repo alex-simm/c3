@@ -971,6 +971,12 @@ def scaleQuantity(q: Qty, factor: float) -> Qty:
                unit=q.unit)
 
 
+def shiftQuantity(q: Qty, amount: float) -> Qty:
+    oldValue = q.numpy()
+    oldLimits = q.get_limits()
+    return Qty(value=oldValue + amount, min_val=oldLimits[0] + amount, max_val=oldLimits[1] + amount, unit=q.unit)
+
+
 def scaleGaussianEnvelope(envelope: pulse.Envelope, factor: float) -> pulse.Envelope:
     """
     Scales a gaussian envelope such that the integrated area stays constant. The final time and sigma

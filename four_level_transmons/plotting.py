@@ -255,11 +255,16 @@ def drawSpectrum(
         states: List[Tuple[float, str]] = None,
         spectralCutoff: Tuple[float, float] = None,
         normalise=True,
-        onlyAbs=False
+        onlyAbs=False,
+        paddingFactor=None
 ):
     """
     Draws the frequency spectrum of a time signal into an Axes object.
     """
+    if paddingFactor is not None:
+        time = np.arange(time[0], paddingFactor * time[-1], time[1] - time[0])
+        signal = np.append(signal, np.zeros(len(time) - len(signal)))
+
     # calculate frequency spectrum
     if np.iscomplex(signal[0]):
         freq_signal = np.fft.fftshift(np.fft.fft(signal))
@@ -427,6 +432,7 @@ def plotComplexMatrix(
     if zticks is not None:
         axis.set_zticks(zticks)
         zlabels = [str(f) for f in zticks]
+        #zlabels = [(str(f) if (f > 1e-2 or f == 0.0) else f"{f:.0e}") for f in zticks]
         axis.zaxis.set_ticklabels(zlabels, fontsize=16 - 2 * (len(zlabels) / 8), rotation=0, va="top", ha="right")
     else:
         for label in axis.zaxis.get_majorticklabels():

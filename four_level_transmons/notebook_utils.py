@@ -1,5 +1,6 @@
 import os
 from typing import List, Tuple
+import time
 
 import numpy as np
 import scipy.linalg
@@ -52,8 +53,8 @@ def printSignal(exper: Experiment, qubits: List[chip.Qubit],
                               spectralThreshold=None)
         plotSignalAndSpectrum(ts, real=values, filename=output.createFileName(f"signal_detail_t{i + 1}", "svg"),
                               spectralThreshold=1e-4)
-        plotSignalAndSpectrum(ts, real=values, filename=output.createFileName(f"signal_detail_states_t{i + 1}", "svg"),
-                              spectralThreshold=1e-4, states=states)
+        #plotSignalAndSpectrum(ts, real=values, filename=output.createFileName(f"signal_detail_states_t{i + 1}", "svg"),
+        #                      spectralThreshold=1e-4, states=states)
 
 
 def printTimeEvolution(exper: Experiment, init: tf.Tensor, gate: gates.Instruction,
@@ -127,9 +128,14 @@ def optimise(output: DataOutput, qubits: List[chip.PhysicalComponent],
 
     # add the callback
     infidelities = []
+    optimise.startTime = time.time()
+    optimise.previousTime = optimise.startTime
 
     def fidelityCallback(index, fidelity, previousFidelity):
-        print(index, fidelity, f"{previousFidelity - fidelity:e}")
+        now = time.time()
+        print(index, fidelity, f"{previousFidelity - fidelity:e}", f"(step time: {now - optimise.previousTime} sec)",
+              f"(average step time: {(now - optimise.startTime) / index} sec)")
+        optimise.previousTime = now
         infidelities.append(fidelity)
 
     opt.set_callback(fidelityCallback)
@@ -158,11 +164,8 @@ def printAllSignals(exper: Experiment, qubit: chip.Qubit, output: DataOutput, di
         time = values["ts"].numpy()
         if "values" in values:
             signal = values["values"].numpy()
-            print(signal)
             plotSignalAndSpectrum(time, signal, min_signal_limit=None, filename=filename, spectralThreshold=None)
         else:
-            print(values["inphase"].numpy())
-            print(values["quadrature"].numpy())
             plotSignalAndSpectrum(time, real=values["inphase"].numpy(), imag=values["quadrature"].numpy(),
                                   min_signal_limit=None, spectralThreshold=None, filename=filename)
 
@@ -193,15 +196,23 @@ def getEnergiesFromFile(filename: str) -> List[float]:
     return np.load(filename)
 
 
-def getEnergiesFromPropagator(U: np.array, t_final: float, dt: float) -> List[float]:
+def getEnergiesFromPropagator(U: np.array, t_final: float) -> List[float]:
     """
     Returns energies obtained from the log of a short-time propagator U in the order of the Hilbert space basis.
     """
-    tau = t_final / dt
-    U = np.float_power(U, 1.0 / tau)
+    #tau = t_final / dt
+    #U = np.float_power(U, 1.0 / tau)
     diag = np.diagonal(U)
-    return -np.angle(diag) / (2 * np.pi * dt)
+    return -np.angle(diag) / (2 * np.pi * t_final)
 
+
+def getEnergiesFromTimeDependentHamiltonian(H: np.array, evaluationStep: int = 0) -> List[float]:
+    #eigenvalues = np.linalg.eigvalsh(H[0]).reshape(5, 1) / (2 * np.pi)
+    #print(eigenvalues.shape)
+    #for i in range(1, H.shape[0]):
+    #    evals = np.linalg.eigvalsh(H[i]).reshape(5, 1) / (2 * np.pi)
+    #    eigenvalues = np.append(eigenvalues, evals, axis=1)
+    return list(np.linalg.eigvalsh(H[evaluationStep]) / (2 * np.pi))
 
 def calculateTransitions(energies: List[float], labels: List[str]) -> List[Tuple[float, str]]:
     """
